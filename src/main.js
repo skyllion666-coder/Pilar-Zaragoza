@@ -578,7 +578,7 @@ function buildPhotos() {
     const m = new THREE.ShaderMaterial({
       uniforms: { map: { value: tex }, dep: { value: dep }, D: { value: P.D || 2.4 } },
       vertexShader: 'uniform sampler2D dep; uniform float D; varying vec2 vUv; void main(){ vUv=uv; vec3 p=position; p.z += (texture2D(dep,uv).r-0.5)*D; gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.); }',
-      fragmentShader: 'uniform sampler2D map; varying vec2 vUv; void main(){ vec4 c=texture2D(map,vUv); gl_FragColor=vec4(c.rgb,1.); \n#include <colorspace_fragment>\n }'
+      fragmentShader: 'uniform sampler2D map; varying vec2 vUv; void main(){ vec4 c=texture2D(map,vUv); float e=smoothstep(0.,.012,vUv.x)*smoothstep(1.,.988,vUv.x)*smoothstep(0.,.012,vUv.y)*smoothstep(1.,.988,vUv.y); gl_FragColor=vec4(c.rgb*e,1.); \n#include <colorspace_fragment>\n }'
     });
     const me = new THREE.Mesh(g, m); me.position.copy(STAGE); me.visible = false; me.frustumCulled = false; scene.add(me);
     photoMesh[k] = { me, W: Wd, H };
@@ -588,7 +588,7 @@ function buildPhotos() {
 function photoCam(k, z, u, v, o, fov) {
   const P = photoMesh[k], tn = Math.tan(THREE.MathUtils.degToRad(fov / 2)), asp = camera.aspect * 1.08;
   const dFill = Math.min((P.H / 2) / tn, (P.W / 2) / (tn * asp)) * 0.93, d = dFill / z;
-  const hv = d * tn, hw = hv * asp, mx = Math.max(0, P.W / 2 - hw - 0.15), my = Math.max(0, P.H / 2 - hv - 0.15);
+  const hv = d * tn, hw = hv * asp, mx = Math.max(0, P.W / 2 - hw - 0.15), my = z < 1 ? P.H * 0.12 : Math.max(0, P.H / 2 - hv - 0.15);   // con la foto entera a la vista, v desplaza ligeramente el encuadre
   camera.position.set(STAGE.x + u * mx + o, STAGE.y + v * my, STAGE.z + d + 0.6);
   camera.lookAt(STAGE.x + u * mx + o * 0.35, STAGE.y + v * my, STAGE.z);
 }
@@ -626,7 +626,7 @@ function buildShots() {
   shot(S.ebro, E1, [[470, 195, 10], [360, 178, 9]], [[0, 0, 42], [205, 162, 10]], 40);
   // vuelo bajo el ojo central del Puente de Piedra
   shot(E1, E2, [[360, 178, 9], [262, 163, 6.5], [205.6, 159.8, 5.6], [150, 152, 9], [110, 140, 18]], [[205, 161, 8], [205, 160, 6], [140, 150, 7], [40, 60, 20], [0, 0, 30]], 44, t => t);
-  photo(E2, E3, 'puente_1', [1.0, 0, 0.75, -0.15], [1.06, 0, 1.0, 0.15]);
+  photo(E2, E3, 'leones', [0.5, 0, -0.75, -0.1], [0.54, 0, -0.75, 0.1]);
   shot(E3, S.rewind, [[110, 140, 18], [60, 150, 35], [10, 140, 52]], [[0, 0, 30], [0, 0, 32], [0, -10, 30]], 42);
   const R4 = C('rewind', 4), R4e = CE('rewind', 4);
   shot(S.rewind, R4, [[10, 140, 52], [-170, 170, 120], [-240, -40, 150], [-160, -200, 140]], [[0, -10, 30], [0, 0, 20], [0, 0, 20], [0, 0, 20]], 44, t => t);
@@ -691,7 +691,7 @@ const CARDS = [];
 function card(t0, t1, html, cls = '') { const el = document.createElement('div'); el.className = 'card ' + cls; el.innerHTML = html; cardsEl.appendChild(el); CARDS.push({ t0, t1, el }); }
 function buildCards() {
   const V = i => C('virgen', i), A = i => C('arte', i);
-  card(0.8, S.ebro - 0.3, '<div class="title">EL PILAR</div><div class="subtitle">Memoria de piedra y bronce</div>', 'center');
+  card(0.8, S.ebro - 0.3, '<div class="title">EL PILAR</div><div class="subtitle">Memoria de piedra y bronce</div><div class="by">Creado por Skyllion</div>', 'center');
   card(C('ebro', 0) + 1, C('ebro', 1), '<div class="k">ZARAGOZA · ORILLA DEL EBRO</div><div class="big">1681 → 1961</div><div class="m">130 × 67 m · 4 torres · 11 cúpulas</div>');
   card(C('ebro', 1) + 0.3, C('ebro', 2), '<div class="k">PUENTE DE PIEDRA</div><div class="big">1401 – 1440</div><div class="m">7 ojos · 225 m · maestro Gil de Menestral<br>Riada de 1643: dos arcos destruidos; reparado en 1659</div>');
   card(C('ebro', 1) + 1.5, C('ebro', 2), 'Puente: modelo 3D sobre su planta real (OpenStreetMap) y fotografías; reparto de luces aproximado (14–32 m)', 'disclaim');
@@ -738,7 +738,7 @@ function buildCards() {
   card(C('azuara', 1) + 0.3, S.ofrenda, '<div class="k">EL ÚLTIMO CAMPANERO</div><div class="big">Simeón Millán</div><div class="m">Electrificación: hacia 1964 (Vidal Erice) · después, 1971 (Guixà)<br>Restauración de los toques tradicionales: 2008 (Relojes Pallás)</div>');
   card(S.ofrenda + 0.3, C('ofrenda', 1), '<div class="k">OFRENDA DE FLORES · DESDE EL 12 DE OCTUBRE DE 1958</div><div class="m">La primera reunió a unas 2.000 personas durante dos horas<br>Hoy dura unas ocho horas en la plaza del Pilar</div>');
   card(C('ofrenda', 1) + 0.3, S.outro + 0.8, '<div class="k">TRES VECES AL DÍA</div><div class="m">La megafonía de las torres difunde la jaculatoria:<br><i>«Bendita y alabada sea la hora en que María Santísima vino en carne mortal a Zaragoza»</i></div>');
-  card(S.outro + 1.2, TOTAL - 1.0, '<div class="title">EL PILAR</div><div class="subtitle">Memoria de piedra y bronce</div><div class="m small" style="margin-top:2vh">Fotografías reales y reconstrucción 3D basada en documentación · Fuentes al final</div>', 'center');
+  card(S.outro + 1.2, TOTAL - 1.0, '<div class="title">EL PILAR</div><div class="subtitle">Memoria de piedra y bronce</div><div class="m small" style="margin-top:2vh">Fotografías reales y reconstrucción 3D basada en documentación · Fuentes al final</div><div class="by">Creado por Skyllion</div>', 'center');
 }
 
 // ------------------------------------------------------------------ BUCLE PRINCIPAL
