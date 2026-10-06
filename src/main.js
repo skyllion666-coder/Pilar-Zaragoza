@@ -5,6 +5,8 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { Audio } from './audio.js';
 
 const TL = window.__TL, S = TL.scenes, CUES = TL.cues, TOTAL = TL.total;
@@ -30,6 +32,9 @@ scene.fog = new THREE.Fog(0x000000, 200, 2600);
 
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
+const gtao = new GTAOPass(scene, camera, 960, 540); gtao.blendIntensity = 0.85;
+gtao.updateGtaoMaterial({ radius: 2.5, distanceExponent: 1.5, thickness: 2, scale: 1, samples: 12 });
+composer.addPass(gtao);
 const bloom = new UnrealBloomPass(new THREE.Vector2(512, 512), 0.35, 0.6, 0.86); composer.addPass(bloom);
 const grade = new ShaderPass({
   uniforms: { tDiffuse: { value: null }, fade: { value: 0 }, time: { value: 0 }, warm: { value: 0 }, flash: { value: 0 }, sepia: { value: 0 } },
@@ -45,21 +50,26 @@ const grade = new ShaderPass({
 composer.addPass(grade); composer.addPass(new OutputPass());
 
 function resize() {
-  const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); composer.setSize(w, h);
+  const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); composer.setSize(w, h); if (typeof gtao !== 'undefined') gtao.setSize(w, h);
   camera.aspect = w / h; camera.updateProjectionMatrix();
 }
 addEventListener('resize', resize); resize();
 
 // ------------------------------------------------------------------ CIELO Y LUCES
-const skyU = { top: { value: new THREE.Color() }, bot: { value: new THREE.Color() }, sunDir: { value: new THREE.Vector3() }, sunCol: { value: new THREE.Color() }, stars: { value: 0 } };
+const skyU = { time: { value: 0 }, top: { value: new THREE.Color() }, bot: { value: new THREE.Color() }, sunDir: { value: new THREE.Vector3() }, sunCol: { value: new THREE.Color() }, stars: { value: 0 } };
 const sky = new THREE.Mesh(new THREE.SphereGeometry(5000, 32, 16), new THREE.ShaderMaterial({
   side: THREE.BackSide, depthWrite: false, fog: false, uniforms: skyU,
   vertexShader: 'varying vec3 vP; void main(){ vP=normalize(position); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }',
-  fragmentShader: `uniform vec3 top,bot,sunCol,sunDir; uniform float stars; varying vec3 vP;
+  fragmentShader: `uniform vec3 top,bot,sunCol,sunDir; uniform float stars,time; varying vec3 vP;
   float h(vec3 p){return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453);}
+  float h2(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+  float n2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h2(i),h2(i+vec2(1,0)),f.x),mix(h2(i+vec2(0,1)),h2(i+vec2(1,1)),f.x),f.y);}
+  float fbm(vec2 p){float a=.5,s=0.;for(int i=0;i<5;i++){s+=a*n2(p);p*=2.03;a*=.5;}return s;}
   void main(){ float y=clamp(vP.y,0.,1.); vec3 c=mix(bot,top,pow(y,.55));
     float s=max(dot(vP,normalize(sunDir)),0.); c+=sunCol*(pow(s,600.)*4.+pow(s,8.)*.25);
     vec3 g=floor(vP*400.); float st=step(.9985,h(g))*stars*smoothstep(0.,.3,vP.y); c+=st;
+    vec2 cp=vP.xz/(vP.y+.12)*1.6+vec2(time*.012,time*.004); float cl=smoothstep(.52,.82,fbm(cp))*smoothstep(0.,.18,vP.y);
+    vec3 cc=mix(bot*1.15, vec3(1.)*length(top+bot)*.55, .45)+sunCol*pow(s,4.)*.35; c=mix(c,cc,cl*.7);
     gl_FragColor=vec4(c,1.);} `
 }));
 scene.add(sky);
@@ -123,6 +133,39 @@ const leadTex = canvasTex(256, 64, (g, w, h) => {
   for (let y = 0; y < h; y += 6) for (let x = 0; x < w; x += 8) { g.fillStyle = 'rgba(255,255,255,.07)'; g.fillRect(x + (y % 12 ? 4 : 0), y, 4, 3); }
 }, [2, 3]);
 
+// v2: texturas reales CC0 (Poly Haven) con mapeado triplanar + relieve (normal map)
+const TEX = {}; const texLoader = new THREE.TextureLoader();
+for (const k in window.__TEX) { const t = texLoader.load(window.__TEX[k]); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; if (k.endsWith('_diff')) t.colorSpace = THREE.SRGBColorSpace; TEX[k] = t; }
+function triplanar(m, name, scale, tint, nStr = 1) {
+  m.map = null; m.color.set(tint);
+  m.onBeforeCompile = sh => {
+    sh.uniforms.tD = { value: TEX[name + '_diff'] }; sh.uniforms.tN = { value: TEX[name + '_nor'] }; sh.uniforms.tS = { value: scale }; sh.uniforms.nS = { value: nStr };
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vWp; varying vec3 vWn;')
+      .replace('#include <worldpos_vertex>', `#include <worldpos_vertex>
+        vec4 _wp=vec4(transformed,1.); vec3 _n=objectNormal;
+        #ifdef USE_INSTANCING
+          _wp=instanceMatrix*_wp; _n=mat3(instanceMatrix)*_n;
+        #endif
+        vWp=(modelMatrix*_wp).xyz; vWn=normalize(mat3(modelMatrix)*_n);`);
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vWp; varying vec3 vWn; uniform sampler2D tD,tN; uniform float tS,nS;')
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        vec3 _N=normalize(vWn); vec3 bw=pow(abs(_N),vec3(4.)); bw/=(bw.x+bw.y+bw.z);
+        vec2 ux=vWp.zy*tS, uy=vWp.xz*tS, uz=vWp.xy*tS;
+        vec3 tc=texture2D(tD,ux).rgb*bw.x+texture2D(tD,uy).rgb*bw.y+texture2D(tD,uz).rgb*bw.z;
+        diffuseColor.rgb*=tc*1.9;`)
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+        {
+        vec3 nx=texture2D(tN,ux).xyz*2.-1., ny=texture2D(tN,uy).xyz*2.-1., nz=texture2D(tN,uz).xyz*2.-1.;
+        nx.xy*=nS; ny.xy*=nS; nz.xy*=nS;
+        nx=vec3(nx.xy+_N.zy, abs(nx.z)*_N.x); ny=vec3(ny.xy+_N.xz, abs(ny.z)*_N.y); nz=vec3(nz.xy+_N.xy, abs(nz.z)*_N.z);
+        vec3 wn=normalize(nx.zyx*bw.x+ny.xzy*bw.y+nz.xyz*bw.z)*faceDirection;
+        normal=normalize((viewMatrix*vec4(wn,0.)).xyz);
+        }`);
+  };
+  m.customProgramCacheKey = () => 'tri_' + name + scale;
+  return m;
+}
+
 // piedra/ladrillo: hiladas y variación según posición mundial
 function stoneify(m, scale = 1) {
   m.onBeforeCompile = sh => {
@@ -158,7 +201,7 @@ function ghostMat(color) {
 }
 
 async function loadModel() {
-  const gltf = await new GLTFLoader().parseAsync(b64(window.__GLB).buffer, '');
+  const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(b64(window.__GLB).buffer, '');
   const root = gltf.scene;
   const list = []; root.traverse(o => { if (o.isMesh) list.push(o); });
   const matCache = {};
@@ -172,18 +215,21 @@ async function loadModel() {
     const mn = o.material.name; const key = mn + (BAROQUE.test(g) ? '_clip' : '');
     if (!matCache[key]) {
       let m = o.material.clone();
-      if (/^Stone|Brick|Plaster|Floor|Alab/.test(mn)) stoneify(m, mn === 'Brick' ? 2 : 1);
-      if (mn === 'Stone') m.color.set(0xd29c68);
-      if (mn === 'StoneLight') m.color.set(0xe2b98a);
+      if (mn === 'Stone') triplanar(m, 'brown_brick_02', 0.5, 0xf2cfa8, 1.2);
+      else if (mn === 'StoneLight') triplanar(m, 'sandstone_blocks_08', 0.3, 0xfff1de, 1.0);
+      else if (mn === 'Plaster') triplanar(m, 'beige_wall_001', 0.15, 0xfff4e6, 0.6);
+      else if (mn === 'Floor') triplanar(m, 'marble_01', 0.22, 0xf2e8dc, 0.7);
+      else if (mn === 'Alabaster') triplanar(m, 'marble_01', 0.6, 0xfff8ee, 0.6);
+      else if (/^Brick/.test(mn)) stoneify(m, 2);
       if (mn === 'Tile') { m.map = tileTex; m.roughness = 0.25; m.metalness = 0.05; m.color.set(0xffffff); }
       if (mn === 'GreenTile') { m.map = greenTex; m.roughness = 0.3; }
       if (mn === 'Lead') { m.map = leadTex; m.color.set(0xc9c5bf); m.metalness = 0.4; m.roughness = 0.45; }
       if (mn === 'Roof') {
-        m.color.set(0xb8805a);
+        triplanar(m, 'clay_roof_tiles_02', 0.32, 0xc9b7a2, 1.2); const _tri = m.onBeforeCompile;
         // óculos: la cubierta no se dibuja sobre las cúpulas (para verlas desde el interior)
         m.onBeforeCompile = sh => {
-          sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vWp;').replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvWp=(modelMatrix*vec4(transformed,1.)).xyz;');
-          sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vWp;\nuniform vec3 uD[11];').replace('void main() {', 'void main() {\n for(int i=0;i<11;i++){ if(length(vWp.xz-uD[i].xy)<uD[i].z) discard; }');
+          _tri(sh);
+          sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uD[11];').replace('void main() {', 'void main() {\n for(int i=0;i<11;i++){ if(length(vWp.xz-uD[i].xy)<uD[i].z) discard; }');
           sh.uniforms.uD = { value: DOMES.map(([x, y, r]) => new THREE.Vector3(x, -y, r * 1.02)) };
         };
       }
@@ -202,8 +248,17 @@ async function loadModel() {
   const rm = named['DomeInRM'];
   if (rm) {
     const p = rm.geometry.attributes.position, uv = rm.geometry.attributes.uv, c = B(50, -21, 0), R = 6.2;
-    for (let i = 0; i < p.count; i++) uv.setXY(i, 0.5 + (p.getX(i) - c.x) / (2 * R) * 0.98, 0.5 - (p.getZ(i) - c.z) / (2 * R) * 0.98);
-    uv.needsUpdate = true;
+    rm.updateMatrixWorld(true); const v = new THREE.Vector3();
+    if (!(uv.array instanceof Float32Array)) { rm.geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(p.count * 2), 2)); }
+    const uv2 = rm.geometry.attributes.uv;
+    for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).applyMatrix4(rm.matrixWorld); uv2.setXY(i, 0.5 + (v.x - c.x) / (2 * R) * 0.98, 0.5 - (v.z - c.z) / (2 * R) * 0.98); }
+    uv2.needsUpdate = true;
+  }
+  // pivotes de las campanas en la corona (la compresión desplaza el origen de los nodos)
+  for (const name of Object.keys(named).filter(n => n.startsWith('Bell_'))) {
+    const o = named[name]; const bb = new THREE.Box3().setFromObject(o); const piv = new THREE.Group(); piv.name = name + '_pivot';
+    piv.position.set((bb.min.x + bb.max.x) / 2, bb.max.y, (bb.min.z + bb.max.z) / 2); o.parent.add(piv); piv.updateMatrixWorld(true); piv.attach(o);
+    piv.material = o.material; named[name] = piv;
   }
   if (groups.Ceiling) groups.Ceiling.visible = false;
   // fantasmas (esquemas de templos anteriores, Torre Nueva)
@@ -220,7 +275,7 @@ async function loadModel() {
 function buildCity() {
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(8000, 8000), new THREE.MeshStandardMaterial({ color: 0x8a7560, roughness: 1 }));
   ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
-  const plaza = new THREE.Mesh(new THREE.PlaneGeometry(560, 64), stoneify(new THREE.MeshStandardMaterial({ color: 0xcfc6b8, roughness: 0.9 })));
+  const plaza = new THREE.Mesh(new THREE.PlaneGeometry(560, 64), triplanar(new THREE.MeshStandardMaterial({ roughness: 0.8 }), 'granite_tile', 0.22, 0xf4efe6, 0.8));
   plaza.rotation.x = -Math.PI / 2; plaza.position.copy(B(10, -68, 0.05)); plaza.receiveShadow = true; scene.add(plaza);
   // Ebro (al norte), con ondulación
   const waterU = { time: { value: 0 }, sky: { value: new THREE.Color() } };
@@ -235,11 +290,11 @@ function buildCity() {
   water.rotation.x = -Math.PI / 2; water.position.copy(B(0, 125, 0.4)); scene.add(water);
   for (const yy of [65, 185]) { const bank = new THREE.Mesh(new THREE.BoxGeometry(4000, 3, 6), new THREE.MeshStandardMaterial({ color: 0x6e6252 })); bank.position.copy(B(0, yy, 1)); scene.add(bank); }
   // Puente de Piedra (esquemático, aguas abajo)
-  const bridgeM = stoneify(new THREE.MeshStandardMaterial({ color: 0xb79a7a }));
+  const bridgeM = triplanar(new THREE.MeshStandardMaterial({ roughness: 0.9 }), 'sandstone_blocks_08', 0.3, 0xe0c8ae, 1.0);
   const deck = new THREE.Mesh(new THREE.BoxGeometry(14, 3, 130), bridgeM); deck.position.copy(B(300, 125, 9)); deck.castShadow = true; scene.add(deck);
   for (let i = 0; i < 6; i++) { const p = new THREE.Mesh(new THREE.BoxGeometry(14, 9, 6), bridgeM); p.position.copy(B(300, 70 + i * 22, 4)); scene.add(p); }
   // edificios del entorno (Ayuntamiento, Lonja, La Seo) — volúmenes aproximados
-  const bm = stoneify(new THREE.MeshStandardMaterial({ color: 0xc9a27e, roughness: 0.95 }));
+  const bm = triplanar(new THREE.MeshStandardMaterial({ roughness: 0.95 }), 'brown_brick_02', 0.45, 0xe6c2a0, 1.0);
   [[125, 0, 50, 56, 20], [185, -10, 34, 40, 18], [290, -10, 70, 60, 24]].forEach(([x, y, sx, sy, h]) => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(sx, h, sy), bm); m.position.copy(B(x, y, h / 2)); m.castShadow = m.receiveShadow = true; scene.add(m);
   });
@@ -247,8 +302,8 @@ function buildCity() {
   // trama urbana procedural (no reproduce manzanas reales)
   const N = 2600, box = new THREE.BoxGeometry(1, 1, 1); box.translate(0, 0.5, 0);
   const roof = new THREE.ConeGeometry(0.75, 0.35, 4, 1); roof.rotateY(Math.PI / 4); roof.translate(0, 0.175, 0);
-  const im = new THREE.InstancedMesh(box, stoneify(new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95 })), N);
-  const ir = new THREE.InstancedMesh(roof, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 }), N);
+  const im = new THREE.InstancedMesh(box, triplanar(new THREE.MeshStandardMaterial({ roughness: 0.95 }), 'beige_wall_001', 0.12, 0xffffff, 0.8), N);
+  const ir = new THREE.InstancedMesh(roof, triplanar(new THREE.MeshStandardMaterial({ roughness: 0.9 }), 'clay_roof_tiles_02', 0.25, 0xffffff, 1.0), N);
   const d = new THREE.Object3D(); let n = 0; let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const cols = [0xd8c2a0, 0xc9a882, 0xe3d4ba, 0xb98d6a, 0xd6b58e];
   const rcol = [0xa0583a, 0x9a6046, 0xb36a48, 0x8c5a44];
@@ -275,7 +330,7 @@ function buildCeiling() {
   const sh = new THREE.Shape(); sh.moveTo(-63.5, -32); sh.lineTo(63.5, -32); sh.lineTo(63.5, 32); sh.lineTo(-63.5, 32); sh.lineTo(-63.5, -32);
   for (const [x, y, r] of DOMES) { const p = new THREE.Path(); p.absarc(x, y, r, 0, Math.PI * 2, true); sh.holes.push(p); }
   const g = new THREE.ShapeGeometry(sh, 32); g.rotateX(-Math.PI / 2);
-  const m = stoneify(new THREE.MeshStandardMaterial({ color: 0xe9dcc6, side: THREE.DoubleSide, roughness: 0.9, clippingPlanes: [clipPlane] }));
+  const m = triplanar(new THREE.MeshStandardMaterial({ side: THREE.DoubleSide, roughness: 0.9, clippingPlanes: [clipPlane] }), 'beige_wall_001', 0.15, 0xfff2e2, 0.6);
   const c = new THREE.Mesh(g, m); c.position.y = 22.6; c.receiveShadow = true; c.castShadow = true; scene.add(c);
   for (const [x, y, r] of DOMES) if (r < 9) {
     const w = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 6.6, 40, 1, true), m); w.position.copy(B(x, y, 22.6 + 3.3)); scene.add(w);
@@ -371,7 +426,7 @@ function buildShots() {
   shot(S.bombs, k3, [[90, -230, 120], [40, -150, 80], [12, -95, 55]], [[10, 0, 40], [5, 0, 50], [2, 0, 48]], 44, t => t);
   shot(k3, S.azuara, [[20, 2, 3.2], [22.2, 4.4, 3.4]], [[25.3, 6.8, 3.5], [25.4, 7.0, 3.6]], 40, t => t);
   shot(S.azuara, a1, [[2000, -4.6, 1.9], [2000, -3.2, 3.0]], [[2000, 6, 2.6], [2000, 6, 3.2]], 52, t => t);   // (coords de la sala: x desplazada)
-  shot(a1, TOTAL + 1, [[-64, -32.5, 59], [-90, -70, 75], [-220, -260, 140], [-300, -380, 160]], [[-64, -32.5, 60], [-64, -32.5, 58], [0, 0, 30], [0, 0, 30]], 48, t => ease(t));
+  shot(a1, TOTAL + 1, [[-64, -32.5, 59], [-64, -42, 59.5], [-90, -75, 75], [-220, -260, 140], [-300, -380, 160]], [[-64, -32.5, 60], [-64, -32.5, 58], [0, 0, 30], [0, 0, 30]], 48, t => ease(t));
 }
 
 // ------------------------------------------------------------------ UI: subtítulos y rótulos
@@ -540,7 +595,7 @@ function update(t) {
     }
     a.needsUpdate = true;
   }
-  waterU.time.value = t; waterU.sky.value.copy(skyU.bot.value);
+  waterU.time.value = t; waterU.sky.value.copy(skyU.bot.value); skyU.time.value = t;
   for (const m of ghostMats) m.uniforms.time.value = t;
 
   // subtítulos y rótulos
@@ -550,8 +605,14 @@ function update(t) {
   for (const c of CARDS) c.el.classList.toggle('on', t >= c.t0 && t < c.t1);
 }
 
+let frames = 0, slow = 0, lastT = performance.now();
 function loop() {
   if (!playing) return;
+  // calidad adaptativa: si el equipo no llega a ~35 fps, se desactiva la oclusión ambiental y se baja la resolución
+  const now = performance.now(), dt = now - lastT; lastT = now; frames++;
+  if (frames > 30 && dt > 28) slow++; else if (slow > 0) slow -= 0.25;
+  if (slow > 45 && gtao.enabled) { gtao.enabled = false; slow = 0; }
+  else if (slow > 45 && !gtao.enabled && renderer.getPixelRatio() > 1) { renderer.setPixelRatio(1); resize(); slow = 0; }
   const t = audio.time();
   update(t);
   composer.render();
@@ -567,7 +628,10 @@ function loop() {
   // bombas que caen: 3 + 1 dudosa (las fuentes no coinciden)
   const bf = groups.BombsFall; const src = bf.children[0];
   for (let i = 0; i < 3; i++) { const c = src.clone(); c.material = src.material.clone(); bf.add(c); }
-  bf.children.forEach(o => { o.material = o.material.clone(); o.material.clippingPlanes = []; o.material.color.set(0xb8c0ca); o.material.emissive = new THREE.Color(0x5a6270); const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.12, 14, 8, 1, true), new THREE.MeshBasicMaterial({ color: 0xcfe3ff, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false })); tr.position.y = 8.6; o.add(tr); });
+  // cada bomba dentro de un contenedor propio (la compresión aplica escala/desplazamiento al nodo)
+  for (const o of [...bf.children]) { const w = new THREE.Group(); bf.add(w); w.attach(o); o.position.sub(new THREE.Box3().setFromObject(o).getCenter(new THREE.Vector3())); w.userData.mesh = o; w.material = o.material; }
+  bf.children.filter(o => o.isMesh).forEach(o => bf.remove(o));
+  bf.children.forEach(w => { const o = w.userData.mesh; o.material = o.material.clone(); o.material.clippingPlanes = []; o.material.color.set(0xb8c0ca); o.material.emissive = new THREE.Color(0x5a6270); w.material = o.material; const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.12, 14, 8, 1, true), new THREE.MeshBasicMaterial({ color: 0xcfe3ff, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false })); tr.position.y = 8.6 / 3.2; tr.scale.setScalar(1 / 3.2); w.add(tr); });
   buildShots(); buildCards();
   setEnv('dawn', 'dawn', 0); update(S.ebro + 6); composer.render();
   btn.disabled = false; btn.textContent = 'INICIAR DOCUMENTAL';

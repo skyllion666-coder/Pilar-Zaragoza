@@ -11,3 +11,6 @@ build/*
 !build/vo.json
 !build/fresco.jpg
 dbg*.py
+v2/*
+!v2/pilar.glb
+!v2/tex/
