@@ -239,7 +239,7 @@ async function loadModel() {
       if (mn === 'Fresco') { m = new THREE.MeshBasicMaterial({ map: fresco, side: THREE.DoubleSide }); }
       if (/Plaster|Floor|Roof/.test(mn)) m.side = THREE.DoubleSide;
       if (mn === 'Gold') { m.emissive = new THREE.Color(0x553300); }
-      if (BAROQUE.test(g)) { m.clippingPlanes = [clipPlane]; m.clipShadows = true; }
+      if (BAROQUE.test(g)) m.clippingPlanes = [clipPlane];
       m.name = mn; matCache[key] = m;
     }
     o.material = matCache[key];
@@ -303,7 +303,7 @@ function buildCity() {
   // Puente de Piedra (esquemático, aguas abajo)
   const bridgeM = triplanar(new THREE.MeshStandardMaterial({ roughness: 0.9 }), 'sandstone_blocks_08', 0.3, 0xe0c8ae, 1.0);
   
-  CITY.bridges.filter(b => b.n !== 'Puente de Piedra').forEach(b => extrudePoly(b.p, 5.5, 8.5, bridgeM));   // el Puente de Piedra se modela aparte
+  CITY.bridges.forEach(b => extrudePoly(b.p, 5.5, 8.5, bridgeM));
   // edificios del entorno (Ayuntamiento, Lonja, La Seo) — volúmenes aproximados
   const bm = triplanar(new THREE.MeshStandardMaterial({ roughness: 0.95 }), 'brown_brick_02', 0.45, 0xe6c2a0, 1.0);
   [].forEach(([x, y, sx, sy, h]) => {
@@ -460,11 +460,11 @@ function buildCeiling() {
   const sh = new THREE.Shape(); sh.moveTo(-63.5, -32); sh.lineTo(63.5, -32); sh.lineTo(63.5, 32); sh.lineTo(-63.5, 32); sh.lineTo(-63.5, -32);
   for (const [x, y, r] of DOMES) { const p = new THREE.Path(); p.absarc(x, y, r, 0, Math.PI * 2, true); sh.holes.push(p); }
   const g = new THREE.ShapeGeometry(sh, 32); g.rotateX(-Math.PI / 2);
-  const m = triplanar(new THREE.MeshStandardMaterial({ side: THREE.DoubleSide, roughness: 0.9, clippingPlanes: [clipPlane], clipShadows: true }), 'beige_wall_001', 0.15, 0xfff2e2, 0.6);
+  const m = triplanar(new THREE.MeshStandardMaterial({ side: THREE.DoubleSide, roughness: 0.9, clippingPlanes: [clipPlane] }), 'beige_wall_001', 0.15, 0xfff2e2, 0.6);
   const c = new THREE.Mesh(g, m); c.position.y = 22.6; c.receiveShadow = true; c.castShadow = true; scene.add(c);
   for (const [x, y, r] of DOMES) if (r < 9) {
     const w = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 6.6, 40, 1, true), m); w.position.copy(B(x, y, 22.6 + 3.3)); scene.add(w);
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.25, 6, 48), new THREE.MeshStandardMaterial({ color: 0xd6b26a, metalness: 0.6, roughness: 0.4, clippingPlanes: [clipPlane], clipShadows: true }));
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.25, 6, 48), new THREE.MeshStandardMaterial({ color: 0xd6b26a, metalness: 0.6, roughness: 0.4, clippingPlanes: [clipPlane] }));
     ring.rotation.x = Math.PI / 2; ring.position.copy(B(x, y, 22.4)); scene.add(ring);
   }
   // haces de luz (aditivos) desde las ventanas del sur
@@ -563,123 +563,46 @@ function buildStair() {
   return { g, lamp };
 }
 
-// ------------------------------------------------------------------ v5: ESCENARIO FOTOGRÁFICO
-// Fotografías reales (Wikimedia Commons) convertidas en relieve con un mapa de profundidad (Depth Anything V2).
-// Todos los píxeles son de la fotografía original; solo se añade el volumen para el movimiento de cámara.
-const PHOTOS = window.__PHOTOS;
-const STAGE = new THREE.Vector3(9000, 0, 9000);
-const photoMesh = {};
-function buildPhotos() {
-  for (const k in PHOTOS) {
-    const P = PHOTOS[k], H = 10, Wd = H * P.w / P.h;
-    const tex = texLoader.load(P.img); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
-    const dep = texLoader.load(P.depth);
-    const seg = 260, g = new THREE.PlaneGeometry(Wd, H, Wd >= H ? seg : Math.round(seg * Wd / H), Wd >= H ? Math.round(seg * H / Wd) : seg);
-    const m = new THREE.ShaderMaterial({
-      uniforms: { map: { value: tex }, dep: { value: dep }, D: { value: P.D || 2.4 } },
-      vertexShader: 'uniform sampler2D dep; uniform float D; varying vec2 vUv; void main(){ vUv=uv; vec3 p=position; p.z += (texture2D(dep,uv).r-0.5)*D; gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.); }',
-      fragmentShader: 'uniform sampler2D map; varying vec2 vUv; void main(){ vec4 c=texture2D(map,vUv); gl_FragColor=vec4(c.rgb,1.); \n#include <colorspace_fragment>\n }'
-    });
-    const me = new THREE.Mesh(g, m); me.position.copy(STAGE); me.visible = false; me.frustumCulled = false; scene.add(me);
-    photoMesh[k] = { me, W: Wd, H };
-  }
-}
-// cámara dentro de la foto: z = zoom (1 = la foto llena el encuadre), u/v = encuadre (-1..1), o = paralaje lateral
-function photoCam(k, z, u, v, o, fov) {
-  const P = photoMesh[k], tn = Math.tan(THREE.MathUtils.degToRad(fov / 2)), asp = camera.aspect * 1.08;
-  const dFill = Math.min((P.H / 2) / tn, (P.W / 2) / (tn * asp)) * 0.93, d = dFill / z;
-  const hv = d * tn, hw = hv * asp, mx = Math.max(0, P.W / 2 - hw - 0.15), my = Math.max(0, P.H / 2 - hv - 0.15);
-  camera.position.set(STAGE.x + u * mx + o, STAGE.y + v * my, STAGE.z + d + 0.6);
-  camera.lookAt(STAGE.x + u * mx + o * 0.35, STAGE.y + v * my, STAGE.z);
-}
-
-// ------------------------------------------------------------------ v5: PUENTE DE PIEDRA y LEONES (fotografía real recortada)
-async function loadBridge() {
-  const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(b64(window.__PUENTE).buffer, '');
-  const stone = triplanar(new THREE.MeshStandardMaterial({ roughness: 0.9 }), 'sandstone_blocks_08', 0.28, 0xf2dcc0, 1.1, 0.25);
-  const light = triplanar(new THREE.MeshStandardMaterial({ roughness: 0.85 }), 'sandstone_blocks_08', 0.3, 0xfff1e2, 0.8, 0.45);
-  const deck = new THREE.MeshStandardMaterial({ color: 0x5a5753, roughness: 0.95 });
-  const iron = new THREE.MeshStandardMaterial({ color: 0x1e1f22, roughness: 0.5, metalness: 0.6 });
-  const globe = new THREE.MeshStandardMaterial({ color: 0xfff4dc, emissive: 0xffd9a0, emissiveIntensity: 0, roughness: 0.3 });
-  gltf.scene.traverse(o => { if (!o.isMesh) return; const n = o.material.name;
-    o.material = n === 'BridgeDeck' ? deck : n === 'Iron' ? iron : n === 'LampGlobe' ? globe : n === 'StoneLight' ? light : stone; o.castShadow = o.receiveShadow = true; });
-  scene.add(gltf.scene); bridge.globe = globe;
-  const lt = texLoader.load(window.__LION); lt.colorSpace = THREE.SRGBColorSpace;
-  for (const [x, y, z] of [[207.7, 46.44, 20.9], [224.03, 47.92, 20.9], [186.57, 278.68, 20.9], [202.9, 280.16, 20.9]]) {
-    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: lt, transparent: true, alphaTest: 0.4 }));
-    const h = 2.9; s.scale.set(h * 425 / 512, h, 1); s.position.copy(B(x, y, z + h / 2 - 0.1)); scene.add(s);
-  }
-}
-const bridge = {};
-
-// ------------------------------------------------------------------ PLANOS (3D y fotográficos)
+// ------------------------------------------------------------------ CÁMARA: planos
+// cada plano: [t0, t1, [posiciones Blender], [miradas Blender], fov, easing]
 let SHOTS = [];
 function shot(t0, t1, P, L, fov = 42, e = ease) {
   SHOTS.push({ t0, t1, pc: new THREE.CatmullRomCurve3(P.map(p => B(...p)), false, 'centripetal'), lc: new THREE.CatmullRomCurve3(L.map(p => B(...p)), false, 'centripetal'), fov, e });
 }
-function photo(t0, t1, k, a, b, fov = 40, e = t => ease(t) * 0.7 + t * 0.3) { SHOTS.push({ t0, t1, photo: k, a, b, fov, e }); }
-const C = (s, i) => cue(s, i).s, CE = (s, i) => cue(s, i).e;
 function buildShots() {
   SHOTS = [];
-  const E1 = C('ebro', 1), E2 = C('ebro', 2), E3 = C('ebro', 3);
-  shot(0, S.ebro, [[560, 210, 9], [470, 195, 10]], [[0, 10, 40], [0, 0, 42]], 38, t => t);
-  shot(S.ebro, E1, [[470, 195, 10], [360, 178, 9]], [[0, 0, 42], [205, 162, 10]], 40);
-  // vuelo bajo el ojo central del Puente de Piedra
-  shot(E1, E2, [[360, 178, 9], [262, 163, 6.5], [205.6, 159.8, 5.6], [150, 152, 9], [110, 140, 18]], [[205, 161, 8], [205, 160, 6], [140, 150, 7], [40, 60, 20], [0, 0, 30]], 44, t => t);
-  photo(E2, E3, 'puente_1', [1.0, 0, 0.75, -0.15], [1.06, 0, 1.0, 0.15]);
-  shot(E3, S.rewind, [[110, 140, 18], [60, 150, 35], [10, 140, 52]], [[0, 0, 30], [0, 0, 32], [0, -10, 30]], 42);
-  const R4 = C('rewind', 4), R4e = CE('rewind', 4);
-  shot(S.rewind, R4, [[10, 140, 52], [-170, 170, 120], [-240, -40, 150], [-160, -200, 140]], [[0, -10, 30], [0, 0, 20], [0, 0, 20], [0, 0, 20]], 44, t => t);
-  photo(R4, R4e + 0.5, 'timpano', [1.0, 0, 0, -0.3], [1.35, 0.1, 0.1, 0.3]);
-  shot(R4e + 0.5, S.capilla, [[-120, -230, 140], [110, -240, 120]], [[0, 0, 20], [10, 0, 25]], 44, t => t);
-  // interior: fotografías reales
-  const c0 = C('capilla', 0), c0e = CE('capilla', 0);
-  shot(S.capilla, S.capilla + 2.6, [[110, -240, 120], [60, -190, 70], [32, -150, 46]], [[10, 0, 25], [20, 0, 25], [26, 0, 20]], 46);
-  photo(S.capilla + 2.6, c0 + (c0e - c0) * 0.55, 'nave', [1.0, 0, -0.6, 0], [1.6, 0, 0.1, 0]);
-  photo(c0 + (c0e - c0) * 0.55, S.virgen, 'santa_capilla', [1.0, -0.5, 0, 0.3], [1.15, 0.5, 0, -0.3]);
-  const V = i => C('virgen', i), vp = at('virgen', 3, 'pero los') + 0.5;
-  photo(S.virgen, V(1), 'virgen_manto', [1.0, 0, 0.2, 0], [1.35, 0, 0.45, 0]);
-  photo(V(1), V(2), 'virgen_cerca', [1.05, 0, 0.4, -0.25], [1.45, 0, 0.2, 0.25]);
-  photo(V(2), V(3), 'virgen_manto', [1.4, 0, 0.3, 0], [1.5, 0, -0.9, 0]);
-  photo(V(3), vp, 'virgen_manto', [1.0, 0, 0, 0.2], [1.12, 0, 0, -0.2]);
-  photo(vp, V(4), 'virgen_cerca', [1.1, 0, -0.6, 0], [1.25, 0, -0.1, 0]);
-  photo(V(4), V(5), 'virgen_cerca', [1.25, 0, 0.6, 0], [1.8, 0, 1.0, 0]);
-  photo(V(5), V(6), 'santa_capilla_2', [1.0, 0.4, 0, -0.2], [1.12, -0.4, 0, 0.2]);
-  photo(V(6), S.arte, 'santa_capilla', [1.2, 0.85, 0.2, 0], [1.6, 0.9, 0.0, 0]);
-  const A = i => C('arte', i);
-  photo(S.arte, A(1), 'retablo_2', [1.0, 0, -1, 0], [1.15, 0, 0.6, 0]);
-  photo(A(1), A(2), 'coreto', [1.0, -0.6, 0, 0], [1.1, 0.6, 0, 0]);
-  photo(A(2), S.bells - 1.2, 'regina', [1.0, 0, 0, 0.2], [1.3, 0, 0, -0.2]);
-  // campanas (3D)
-  const b1 = C('bells', 1), b2 = C('bells', 2), b3 = C('bells', 3), pil = S.sitios - 7.0;
+  const b1 = cue('bells', 1).s, b2 = cue('bells', 2).s, pil = S.sitios - 7.4;
+  const c1 = S.goya, c3 = S.bells - 1.2, v1 = cue('virgen', 1).s, v2 = cue('virgen', 2).s, v3 = cue('virgen', 3).s, v4 = cue('virgen', 4).s;
+  const t1 = cue('sitios', 1).s, t2 = cue('sitios', 2).s;
+  const k1 = cue('bombs', 1).s, k3 = cue('bombs', 2).s, a1 = cue('azuara', 1).s;
+  shot(0, S.ebro, [[460, 140, 9], [380, 125, 12]], [[0, 10, 40], [0, 0, 42]], 38, t => t);
+  shot(S.ebro, S.rewind, [[380, 125, 12], [240, 112, 10], [120, 105, 24], [10, 140, 52]], [[0, 0, 42], [0, 0, 38], [-20, 0, 40], [0, -10, 30]], 40);
+  shot(S.rewind, S.capilla, [[10, 140, 52], [-170, 170, 120], [-240, -40, 150], [-120, -230, 140], [110, -240, 120]], [[0, -10, 30], [0, 0, 20], [0, 0, 20], [0, 0, 20], [10, 0, 25]], 44, t => t);
+  shot(S.capilla, S.virgen, [[110, -240, 120], [40, -120, 12], [30, -46, 6], [30, -31, 5.5], [32.5, -17, 4.5], [34.5, -6, 3.2]], [[10, 0, 25], [30, 0, 10], [30, 0, 7], [32, 0, 6], [34, 0, 5], [36, 3.2, 2.8]], 48);
+  // LA VIRGEN: acercamiento al camarín
+  shot(S.virgen, v1, [[34.5, -6, 3.2], [35.6, -1.2, 2.7], [35.9, 0.9, 2.75]], [[36, 3.2, 2.8], [36, 3.2, 2.75], [36, 3.2, 2.85]], 44);
+  shot(v1, v2, [[35.9, 0.9, 2.75], [36.25, 2.0, 2.85]], [[36, 3.2, 2.85], [36, 3.2, 2.87]], 40, t => t);
+  shot(v2, v3, [[36.25, 2.0, 2.85], [36.6, 1.4, 2.2], [36.1, 0.8, 1.7]], [[36, 3.2, 2.87], [36, 3.2, 2.2], [36, 3.2, 1.9]], 42);
+  shot(v3, v4, [[36.1, 0.8, 1.7], [37.5, -3, 4.5], [36, -6.5, 8], [35.2, 0.2, 2.9]], [[36, 3.2, 1.9], [36, 3.2, 3.5], [36, 3.2, 5], [36, 3.2, 2.5]], 50);
+  shot(v4, c1, [[35.2, 0.2, 2.9], [35.85, 1.7, 2.8]], [[36, 3.2, 2.5], [36, 3.2, 2.85]], 46, t => t);
+  shot(c1, c3, [[35.85, 1.7, 2.8], [38, -6, 4], [44, -17, 4.5], [48.8, -19.6, 7]], [[36, 3.2, 2.85], [44, -15, 8], [50, -21, 25], [50.15, -21.2, 40]], 60);
   shot(S.bells - 1.2, b1, [[-90, -78, 4], [-84, -60, 30], [-76, -48, 52]], [[-64, -32.5, 20], [-64, -32.5, 40], [-64, -32.5, 58]], 44);
   shot(b1, b2, [[-76, -48, 52], [-68, -40, 58.5], [-62.5, -35, 58.5]], [[-64, -32.5, 58], [-64, -32.5, 57], [-64.5, -32, 56.5]], 52);
-  shot(b2, b3, [[-62.5, -35, 58.5], [-61.6, -34.6, 57.2]], [[-64.5, -32, 56.5], [-64, -32.5, 56.2]], 50);
-  shot(b3, pil, [[-61.6, -34.6, 57.2], [-62.2, -37.2, 57.6]], [[-64, -32.5, 56.2], [-64, -35.7, 57.2]], 48);
-  shot(pil, S.sitios, [[-62.2, -37.2, 57.6], [-62, -35, 57.4], [-100, -110, 95], [-160, -260, 170]], [[-64, -32.5, 56.2], [-64, -32.5, 56.5], [-64, -32.5, 40], [-40, -20, 20]], 50, t => t < .3 ? t * .35 / .3 : .35 + ease((t - .3) / .7) * .65);
-  const t1 = C('sitios', 1), t2 = C('sitios', 2);
+  shot(b2, pil, [[-62.5, -35, 58.5], [-61.6, -34.6, 57.2]], [[-64.5, -32, 56.5], [-64, -32.5, 56.2]], 50);
+  shot(pil, S.sitios, [[-61.6, -34.6, 57.2], [-62, -35, 57.4], [-100, -110, 95], [-160, -260, 170]], [[-64, -32.5, 56.2], [-64, -32.5, 56.5], [-64, -32.5, 40], [-40, -20, 20]], 50, t => t < .3 ? t * .3 / .3 * .35 : .35 + ease((t - .3) / .7) * .65);
   shot(S.sitios, t1, [[-160, -260, 170], [40, -80, 75], [67.5, -36.8, 56]], [[-40, -20, 20], [64, -32.5, 58], [64, -32.5, 55.6]], 50);
-  photo(t1, t2, 'torre_nueva', [1.0, 0, -0.8, 0], [1.2, 0, 0.5, 0]);
-  shot(t2, S.bombs, [[60, -300, 100], [120, -120, 60], [100, -70, 40]], [[-160, -345, 40], [64, -32.5, 58], [0, 30, 30]], 46);
-  // 1936
-  const k1 = C('bombs', 1), kU = at('bombs', 1, 'Una se'), kO = at('bombs', 1, 'Otras'), kN = at('bombs', 1, 'Ninguna'), k3 = C('bombs', 3);
-  shot(S.bombs, k1, [[90, -230, 120], [40, -150, 80], [12, -95, 55]], [[10, 0, 40], [5, 0, 50], [2, 0, 48]], 44, t => t);
-  photo(k1, kU, 'bomba_cartel', [1.0, 0, 0, 0.2], [1.25, 0, 0, -0.2]);
-  photo(kU, kO, 'bomba_marca', [1.0, 0, 0, 0.3], [1.3, 0, 0, -0.3]);
-  photo(kO, kN, 'bomba_agujero', [1.0, 0, 0.6, 0], [1.4, 0, 0.2, 0]);
-  shot(kN, k3, [[12, -95, 55], [-20, -80, 50], [-40, -60, 45]], [[2, 0, 48], [0, 0, 45], [0, 0, 42]], 46, t => t);
-  photo(k3, S.azuara, 'bomba_cartel', [1.3, 0, 0.6, 0.25], [1.05, 0, 0, -0.2]);
-  // campaneros (sala de campanas, 3D) y Ofrenda (fotografías)
-  shot(S.azuara, S.ofrenda, [[-62.2, -36.5, 56.5], [-61.5, -33.6, 58.8], [-62.8, -36.8, 58.2]], [[-64, -32.5, 56.5], [-65, -31.5, 57.5], [-64, -32.5, 56.2]], 50, t => t);
-  const o1 = C('ofrenda', 1);
-  photo(S.ofrenda, (S.ofrenda + o1) / 2, 'ofrenda', [1.0, -0.4, 0, 0], [1.2, 0.4, 0, 0]);
-  photo((S.ofrenda + o1) / 2, o1, 'ofrenda_2', [1.0, 0.4, 0, 0], [1.2, -0.4, 0, 0]);
-  shot(o1, TOTAL + 1, [[-64, -32.5, 59], [-64, -42, 59.5], [-90, -75, 75], [-220, -260, 140], [-300, -380, 160]], [[-64, -32.5, 60], [-64, -32.5, 58], [-64, -32.5, 58], [0, 0, 30], [0, 0, 30]], 48, t => ease(t));
+  shot(t1, t2 + 1.5, [[67.5, -36.8, 56], [110, -170, 110], [60, -300, 100]], [[64, -32.5, 55.6], [-80, -230, 40], [-160, -345, 40]], 46);
+  shot(t2 + 1.5, S.bombs, [[60, -300, 100], [120, -120, 60], [100, -70, 40]], [[-160, -345, 40], [64, -32.5, 58], [0, 30, 30]], 46);
+  shot(S.bombs, k3, [[90, -230, 120], [40, -150, 80], [12, -95, 55]], [[10, 0, 40], [5, 0, 50], [2, 0, 48]], 44, t => t);
+  shot(k3, S.azuara, [[20, 2, 3.2], [22.2, 4.4, 3.4]], [[25.3, 6.8, 3.5], [25.4, 7.0, 3.6]], 40, t => t);
+  shot(S.azuara, a1, [[2000, -4.6, 1.9], [2000, -3.2, 3.0]], [[2000, 6, 2.6], [2000, 6, 3.2]], 52, t => t);   // (coords de la sala: x desplazada)
+  shot(a1, TOTAL + 1, [[-64, -32.5, 59], [-64, -42, 59.5], [-90, -75, 75], [-220, -260, 140], [-300, -380, 160]], [[-64, -32.5, 60], [-64, -32.5, 58], [0, 0, 30], [0, 0, 30]], 48, t => ease(t));
 }
 
-// ------------------------------------------------------------------ UI: subtítulos, rótulos y créditos de cada fotografía
-const subEl = document.getElementById('sub'), cardsEl = document.getElementById('cards'), creditEl = document.getElementById('credit');
+// ------------------------------------------------------------------ UI: subtítulos y rótulos
+const subEl = document.getElementById('sub'), cardsEl = document.getElementById('cards');
 function splitCue(c) {
+  // trocea frases largas en bloques legibles (≤ ~95 caracteres), repartiendo el tiempo
   const parts = []; let cur = '';
   for (const w of c.text.split(/(?<=[.:?!;])\s+|(?<=,)\s+/)) { if ((cur + ' ' + w).trim().length > 95 && cur) { parts.push(cur.trim()); cur = w; } else cur = (cur + ' ' + w).trim(); }
   if (cur) parts.push(cur);
@@ -690,184 +613,222 @@ const SUBS = CUES.flatMap(splitCue);
 const CARDS = [];
 function card(t0, t1, html, cls = '') { const el = document.createElement('div'); el.className = 'card ' + cls; el.innerHTML = html; cardsEl.appendChild(el); CARDS.push({ t0, t1, el }); }
 function buildCards() {
-  const V = i => C('virgen', i), A = i => C('arte', i);
   card(0.8, S.ebro - 0.3, '<div class="title">EL PILAR</div><div class="subtitle">Memoria de piedra y bronce</div>', 'center');
-  card(C('ebro', 0) + 1, C('ebro', 1), '<div class="k">ZARAGOZA · ORILLA DEL EBRO</div><div class="big">1681 → 1961</div><div class="m">130 × 67 m · 4 torres · 11 cúpulas</div>');
-  card(C('ebro', 1) + 0.3, C('ebro', 2), '<div class="k">PUENTE DE PIEDRA</div><div class="big">1401 – 1440</div><div class="m">7 ojos · 225 m · maestro Gil de Menestral<br>Riada de 1643: dos arcos destruidos; reparado en 1659</div>');
-  card(C('ebro', 1) + 1.5, C('ebro', 2), 'Puente: modelo 3D sobre su planta real (OpenStreetMap) y fotografías; reparto de luces aproximado (14–32 m)', 'disclaim');
-  card(C('ebro', 2) + 0.3, C('ebro', 3), '<div class="k">LOS LEONES</div><div class="big">1991</div><div class="m">Cuatro leones de bronce · Francisco Rallo Lahoz</div>');
-  card(C('ebro', 3) + 0.3, S.rewind, '<div class="tag">TRADICIÓN</div><div class="big">2 de enero del año 40</div><div class="m">La Virgen se aparece al apóstol Santiago<br>y deja una columna de jaspe</div>');
+  card(cue('ebro', 0).s + 1.2, cue('ebro', 1).s, '<div class="k">ZARAGOZA · ORILLA DEL EBRO</div><div class="big">1681 → 1961</div><div class="m">130 × 67 m · 4 torres · 11 cúpulas</div>');
+  card(cue('ebro', 1).s + 0.3, S.rewind, '<div class="tag">TRADICIÓN</div><div class="big">2 de enero del año 40</div><div class="m">La Virgen se aparece al apóstol Santiago<br>y deja una columna de jaspe</div>');
   const r1 = cue('rewind', 1);
-  card(r1.s + 0.2, at('rewind', 1, 'La de la plaza'), '<div class="big">1961</div><div class="m">Torres del lado del río<br>(financiadas por Francisco Urzaiz y Leonor Sala)</div>');
+  card(r1.s + 0.2, at('rewind', 1, 'La de la plaza'), '<div class="big">1961</div><div class="m">Torres del lado del río<br>(obra financiada por Francisco Urzaiz y Leonor Sala)</div>');
   card(at('rewind', 1, 'La de la plaza'), r1.e + 0.3, '<div class="big">1907</div><div class="m">Torre junto al Ayuntamiento<br>(Ricardo Magdalena · Fernando de Yarza)</div>');
-  card(C('rewind', 2), C('rewind', 3), '<div class="big">1681</div><div class="m">Comienza el templo barroco<br>Trazas: Felipe Sánchez · revisión: Francisco Herrera el Mozo</div>');
-  card(C('rewind', 3), at('rewind', 3, 'Y antes'), '<div class="big">h. 1515</div><div class="m">Templo gótico-mudéjar</div>');
-  card(at('rewind', 3, 'Y antes'), C('rewind', 4), '<div class="big">1118 · 1434</div><div class="m">Templo románico, tras la conquista de Alfonso I<br>arrasado por un incendio en 1434</div>');
-  card(C('rewind', 4) + 0.3, CE('rewind', 4) + 0.5, '<div class="k">LO QUE QUEDA DEL TEMPLO ROMÁNICO</div><div class="big">Tímpano</div><div class="m">con crismón · muro sur, junto a la puerta baja</div>');
-  card(CE('rewind', 4) + 0.6, S.capilla, '<div class="big" id="yearRoll">1515</div>', 'center');
-  card(C('capilla', 0) + 0.5, S.virgen, '<div class="k">SANTA CAPILLA</div><div class="big">1750 – 1765</div><div class="m">Ventura Rodríguez · templete oval que guarda la columna</div>');
+  card(cue('rewind', 2).s, cue('rewind', 3).s + 0.01, '<div class="big">1681</div><div class="m">Comienza el templo barroco<br>Trazas: Felipe Sánchez · revisión: Francisco Herrera el Mozo</div>');
+  card(cue('rewind', 3).s, at('rewind', 3, 'Y antes'), '<div class="big">h. 1515</div><div class="m">Templo gótico-mudéjar</div>');
+  card(at('rewind', 3, 'Y antes'), cue('rewind', 3).e + 0.6, '<div class="big">1118 · 1434</div><div class="m">Templo románico tras la conquista de Alfonso I<br>destruido por un incendio en 1434</div>');
+  card(at('rewind', 3, 'gótico'), cue('rewind', 3).e + 0.6, 'Esquema ilustrativo. La forma exacta de los templos anteriores no se conoce.', 'disclaim');
+  card(cue('rewind', 3).e + 0.7, S.capilla, '<div class="big" id="yearRoll">1515</div>', 'center');
+  card(cue('capilla', 0).s + 0.5, S.virgen, '<div class="k">SANTA CAPILLA</div><div class="big">1750 – 1765</div><div class="m">Ventura Rodríguez · templete oval que guarda la columna</div>');
+  // LA VIRGEN DEL PILAR (fuente: catedraldezaragoza.es)
+  const V = i => cue('virgen', i).s;
   card(V(0) + 0.4, V(1), '<div class="k">PATRONA DE LA HISPANIDAD · FIESTA, 12 DE OCTUBRE</div><div class="big">LA VIRGEN<br>DEL PILAR</div>');
   card(V(1) + 0.2, V(2), '<div class="k">LA IMAGEN</div><div class="big">36 cm</div><div class="m">Talla de madera, primera mitad del siglo XV<br>Atribuida a Juan de la Huerta (estudios de M.ª Carmen Lacarra)</div>');
+  card(V(1) + 0.6, V(3), '<img src="data:image/jpeg;base64,' + window.__VIRGIN + '" alt="Virgen del Pilar"><div class="cap">Fotografía real · Miguel Hermoso Cuesta · CC BY-SA 4.0</div>', 'photo');
   card(V(2) + 0.2, V(3), '<div class="k">LA COLUMNA</div><div class="big">1,70 m</div><div class="m">Jaspe · Ø 24 cm · forrada de bronce y después de plata</div>');
   card(at('virgen', 3, 'Tiene'), at('virgen', 3, 'pero los'), '<div class="big">+ 450</div><div class="m">mantos · uno distinto cada día<br>cada uno de unos 80 cm de alto</div>');
-  card(at('virgen', 3, 'pero los') + 0.6, V(4), '<div class="big">2 · 12 · 20</div><div class="m">Sin manto: la Venida (2 de enero), la fiesta (12 de octubre)<br>y la coronación (20 de mayo de 1905)</div>');
-  card(V(4) + 0.3, V(5), '<div class="k">CORONACIÓN · 20 DE MAYO DE 1905</div><div class="big">44 días</div><div class="m">33 artesanos de la casa Ansorena (Madrid)<br>brillantes, esmeraldas, rubíes, topacios y perlas</div>');
-  card(V(5) + 0.3, V(6), '<div class="k">PRESENTACIÓN DE LOS NIÑOS</div><div class="m">Hasta los diez años, ante la imagen, desde el camarín<br>con cita previa del Cabildo</div>');
-  card(V(6) + 0.3, S.arte, '<div class="k">EL MILAGRO DE CALANDA</div><div class="big">1640</div><div class="m">Miguel Juan Pellicer · pierna amputada en el Hospital de Gracia de Zaragoza<br>29 de marzo de 1640 · proceso con 25 testigos<br>Sentencia del arzobispo Pedro Apaolaza, 27 de abril de 1641</div>');
-  card(V(6) + 1.5, S.arte, 'Relato de fe documentado en el proceso canónico; la sentencia lo declaró milagro.', 'disclaim');
-  card(A(0) + 0.3, A(1), '<div class="k">RETABLO MAYOR</div><div class="big">1509 – 1518</div><div class="m">Damián Forment · alabastro</div>');
-  card(A(1) + 0.3, A(2), '<div class="k">CORETO</div><div class="big">1772</div><div class="m">Francisco de Goya · «La Adoración del Nombre de Dios»</div>');
-  card(A(2) + 0.3, S.bells, '<div class="k">CÚPULA «REGINA MARTYRUM»</div><div class="big">1780 – 1781</div><div class="m">Francisco de Goya · terminada el 28 de mayo de 1781<br>Chocó con su cuñado y supervisor, Francisco Bayeu</div>');
-  card(C('bells', 1), C('bells', 2), `<div class="k">INVENTARIO DE CAMPANAS</div><div class="cols">
+  card(at('virgen', 3, 'pero los') + 0.3, V(4), '<div class="big">2 · 12 · 20</div><div class="m">Días sin manto: la Venida (2 de enero),<br>la fiesta (12 de octubre) y la coronación (20 de mayo de 1905)</div>');
+  card(V(4) + 0.3, S.goya, '<div class="k">EL MILAGRO DE CALANDA</div><div class="big">1640</div><div class="m">Miguel Juan Pellicer · amputada en el Hospital de Gracia de Zaragoza<br>29 de marzo de 1640: dice despertar con la pierna · 25 testigos<br>Sentencia del arzobispo Pedro Apaolaza, 27 de abril de 1641</div>');
+  card(V(4) + 1.5, S.goya, 'Relato de fe documentado en el proceso canónico; la sentencia lo declaró milagro.', 'disclaim');
+  card(V(0) + 1, V(4), 'Camarín y figura: recreación 3D; la talla real no se reproduce. Datos: catedraldezaragoza.es', 'disclaim');
+  card(S.goya + 0.4, S.bells, '<div class="k">CÚPULA «REGINA MARTYRUM»</div><div class="big">1780 – 1781</div><div class="m">Francisco de Goya · terminada el 28 de mayo de 1781<br>Su estilo chocó con el de su cuñado y supervisor, Francisco Bayeu</div>');
+  card(S.goya + 1.5, S.bells, 'Fotografía real del fresco (Wikimedia Commons, dominio público) proyectada sobre la reconstrucción', 'disclaim');
+  card(S.capilla + 3, S.virgen, 'Interior: reconstrucción 3D esquemática basada en documentación disponible', 'disclaim');
+  card(cue('bells', 1).s, cue('bells', 2).s, `<div class="k">INVENTARIO DE CAMPANAS</div><div class="cols">
    <div><b>Torre alta de la plaza · 9</b><br>Santa Ana · 1884<br>Campana del reloj · 1764 · Lester &amp; Pack (Londres)<br>La Santiaga · 1771 / 1804 *<br>Santa Isabel · 1971<br>Juana Paula · 1983<br>La Braulia · 1783<br>La Indalecia · 1794<br>Petra Paula · 1971<br><b>La Pilara · 1866</b></div>
    <div><b>Torre baja de la plaza · 6</b><br><b>Campana de los Sitios · 1711 *</b><br>Cuartos de la Torre Nueva · 1508 *<br>Carillón de Correos · 4 · 1940<br><br><b>Trascoro · 1</b><br>Campana de señales · h. 1900</div></div>
    <div class="m small">* La propia ficha da fechas distintas en su texto (1771; 1715 «por verificar»; 1558 «no verificado»).<br>Fuente: Campaners de la Catedral de València (F. Llop i Bayo)</div>`, 'wide');
-  card(C('bells', 2) + 0.2, C('bells', 3), '<div class="k">CAMPANA</div><div class="big">LA PILARA</div><div class="m">1866 · Andrés de Argos y Eugenio de Zuvieta<br>Ø 157 cm · 2.170 kg</div>');
-  card(C('bells', 3) + 0.2, S.sitios - 6.6, '<div class="k">CAMPANA DEL RELOJ</div><div class="big">1764</div><div class="m">Lester &amp; Pack, Londres · Ø 62 cm · 156 kg</div>');
+  card(cue('bells', 2).s + 0.2, S.sitios - 0.5, '<div class="k">CAMPANA</div><div class="big">LA PILARA</div><div class="m">1866 · Andrés de Argos y Eugenio de Zuvieta<br>Ø 157 cm · 2.170 kg</div>');
   card(S.sitios - 6.6, S.sitios - 1, '<div class="tag">BANDEO</div><div class="m">Volteo completo de la campana mayor, reservado a las grandes fiestas</div>');
-  card(S.bells - 1, S.sitios + 2, 'Campanas: diámetros reales del inventario; sonido sintetizado según su tamaño (no son grabaciones)', 'disclaim');
-  card(C('sitios', 0) + 2.2, C('sitios', 1), '<div class="k">CAMPANA</div><div class="big">DE LOS SITIOS</div><div class="m">1711 · Andrés de Asín · Ø 220 cm · 6.165 kg</div>');
-  card(C('sitios', 1) + 0.3, C('sitios', 2), '<div class="k">TORRE NUEVA · 1504 – 1892</div><div class="m">Torre mudéjar del reloj municipal, inclinada<br>plaza de San Felipe · antes la campana se llamaba «el Relox»</div>');
-  card(C('sitios', 2) + 0.2, S.bombs - 0.5, '<div class="big">1892</div><div class="m">Derribo de la Torre Nueva · sus campanas pasan al Pilar</div>');
-  card(C('bombs', 0) + 0.3, C('bombs', 1), '<div class="big">3 · VIII · 1936</div><div class="m">Madrugada</div>');
-  card(C('bombs', 1) + 0.2, at('bombs', 1, 'Una se'), '<div class="big">3 o 4</div><div class="m">La placa del templo: «Dos de las tres bombas…»<br>Otras fuentes (VSCW): cuatro</div>');
-  card(at('bombs', 1, 'Ninguna'), C('bombs', 2), '<div class="big">NINGUNA EXPLOTÓ</div>', 'center');
-  card(C('bombs', 2) + 0.2, C('bombs', 3), '<div class="cols"><div><span class="tag">TRADICIÓN</span><br>Milagro</div><div><span class="tag alt">INVESTIGACIÓN</span><br>Fallo de las espoletas<br>o sabotaje (VSCW)</div></div>', 'wide');
-  card(C('bombs', 3) + 0.2, S.azuara, '<div class="k">JUNTO A LA SANTA CAPILLA</div><div class="m">Hispana A-6 de 50 kg, según VSCW. Su autenticidad ha sido cuestionada.</div>');
-  card(at('azuara', 0, 'José Azuara') - 0.2, C('azuara', 1), '<div class="k">INSCRIPCIÓN EN LA ESCALERA DE LA TORRE</div><div class="big">«José Azuara<br>Campanero»</div><div class="m">Letra que parece de finales del siglo XVIII</div>');
-  card(C('azuara', 1) + 0.3, S.ofrenda, '<div class="k">EL ÚLTIMO CAMPANERO</div><div class="big">Simeón Millán</div><div class="m">Electrificación: hacia 1964 (Vidal Erice) · después, 1971 (Guixà)<br>Restauración de los toques tradicionales: 2008 (Relojes Pallás)</div>');
-  card(S.ofrenda + 0.3, C('ofrenda', 1), '<div class="k">OFRENDA DE FLORES · DESDE EL 12 DE OCTUBRE DE 1958</div><div class="m">La primera reunió a unas 2.000 personas durante dos horas<br>Hoy dura unas ocho horas en la plaza del Pilar</div>');
-  card(C('ofrenda', 1) + 0.3, S.outro + 0.8, '<div class="k">TRES VECES AL DÍA</div><div class="m">La megafonía de las torres difunde la jaculatoria:<br><i>«Bendita y alabada sea la hora en que María Santísima vino en carne mortal a Zaragoza»</i></div>');
-  card(S.outro + 1.2, TOTAL - 1.0, '<div class="title">EL PILAR</div><div class="subtitle">Memoria de piedra y bronce</div><div class="m small" style="margin-top:2vh">Fotografías reales y reconstrucción 3D basada en documentación · Fuentes al final</div>', 'center');
+  card(cue('sitios', 0).s + 2.5, t(1), '<div class="k">CAMPANA</div><div class="big">DE LOS SITIOS</div><div class="m">1711 · Andrés de Asín · Ø 220 cm · 6.165 kg<br>Antes llamada «el Relox»</div>');
+  card(t(1) + 1.2, t(2), '<div class="k">TORRE NUEVA · 1504 – 1892</div><div class="m">Torre mudéjar del reloj municipal, inclinada · plaza de San Felipe<br>Antes llamada su campana «el Relox»<br>Esquema ilustrativo; ubicación aproximada</div>');
+  card(t(2) + 0.2, S.bombs - 0.5, '<div class="big">1892</div><div class="m">Derribo de la Torre Nueva · sus campanas pasan al Pilar</div>');
+  card(cue('bombs', 0).s + 0.3, k(1), '<div class="big">3 · VIII · 1936</div><div class="m">Madrugada</div>');
+  card(k(1) + 0.3, at('bombs', 1, 'Ninguna'), '<div class="big">3 o 4</div><div class="m">bombas, según las fuentes</div>');
+  card(at('bombs', 1, 'Ninguna'), at('bombs', 1, 'Ninguna') + 2.2, '<div class="big">NINGUNA EXPLOTÓ</div>', 'center');
+  card(at('bombs', 1, 'Ninguna') + 2.2, k(2), '<div class="cols"><div><span class="tag">TRADICIÓN</span><br>Milagro</div><div><span class="tag alt">INVESTIGACIÓN</span><br>Fallo de las espoletas<br>o sabotaje (VSCW)</div></div>', 'wide');
+  card(k(2) + 0.2, S.azuara, '<div class="k">EXPUESTAS JUNTO A LA SANTA CAPILLA</div><div class="m">Hispana A-6 de 50 kg, según VSCW. Su autenticidad ha sido cuestionada.</div>');
+  card(S.azuara + 0.5, cue('azuara', 1).s, 'Recreación. Inscripción documentada por Campaners de la Catedral de València; la letra original no se reproduce.', 'disclaim');
+  card(at('azuara', 0, 'José Azuara') + 1.5, cue('azuara', 1).s, '<div class="k">EL ÚLTIMO CAMPANERO</div><div class="m">El «tío» Simeón Millán tocó a mano las campanas del Pilar durante buena parte del siglo XX. Poco después de su muerte, hacia 1964, se electrificaron.</div>');
+  card(cue('azuara', 1).s + 0.5, cue('azuara', 1).e + 0.3, '<div class="k">TRES VECES AL DÍA</div><div class="m">La megafonía de las torres difunde la jaculatoria:<br><i>«Bendita y alabada sea la hora en que María Santísima vino en carne mortal a Zaragoza»</i></div>');
+  card(cue('azuara', 1).e + 0.3, S.outro + 0.9, '<div class="k">OFRENDA DE FLORES · DESDE EL 12 DE OCTUBRE DE 1958</div><div class="m">La primera reunió a unas 2.000 personas durante dos horas.<br>Hoy dura unas ocho horas en la plaza del Pilar.<br><i>Evocación con partículas; no reproduce la estructura real.</i></div>');
+  card(S.outro + 1.2, TOTAL - 1.0, '<div class="title">EL PILAR</div><div class="subtitle">Memoria de piedra y bronce</div><div class="m small" style="margin-top:2vh">Reconstrucción 3D basada en documentación disponible · Fuentes al final</div>', 'center');
+  function c(i) { return cue('capilla', i).s; } function t(i) { return cue('sitios', i).s; } function k(i) { return cue('bombs', i).s; }
 }
 
 // ------------------------------------------------------------------ BUCLE PRINCIPAL
-let audio, waterU, shaftM, playing = false;
+let audio, t0 = null, waterU, shaftM, stair, birds, people, playing = false;
 const camShake = new THREE.Vector3();
-let lastPhoto = null;
 function update(t) {
+  // planos de cámara
   let sh = SHOTS.find(s => t >= s.t0 && t < s.t1) || SHOTS[SHOTS.length - 1];
   const u = sh.e(clamp((t - sh.t0) / (sh.t1 - sh.t0)));
-  const isPhoto = !!sh.photo;
-  for (const k in photoMesh) photoMesh[k].me.visible = isPhoto && k === sh.photo;
-  if (isPhoto) {
-    const a = sh.a, b = sh.b, L = (x, y) => x + (y - x) * u;
-    camera.fov = sh.fov; camera.updateProjectionMatrix();
-    photoCam(sh.photo, L(a[0], b[0]), L(a[1], b[1]), L(a[2], b[2]), L(a[3], b[3]), sh.fov);
-  } else {
-    camera.position.copy(sh.pc.getPoint(u)); const look = sh.lc.getPoint(u);
-    camera.fov = sh.fov; camera.updateProjectionMatrix(); camera.position.add(camShake); camera.lookAt(look);
-  }
-  // en las fotografías: sin tono cinematográfico ni efectos (los píxeles se muestran tal cual)
-  renderer.toneMapping = isPhoto ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;
-  bloom.enabled = !isPhoto; gtao.enabled = !isPhoto && quality.gtao;
-  if (waterU.reflect) waterU.reflect.visible = !isPhoto && quality.reflect; waterU.simple.visible = !isPhoto && !quality.reflect;
-  const cr = isPhoto ? PHOTOS[sh.photo].credit : '';
-  if (creditEl.dataset.t !== cr) { creditEl.dataset.t = cr; creditEl.textContent = cr; creditEl.classList.toggle('on', !!cr); }
+  camera.position.copy(sh.pc.getPoint(u)); const look = sh.lc.getPoint(u);
+  camera.fov = sh.fov; camera.updateProjectionMatrix();
+  camera.position.add(camShake); camera.lookAt(look);
 
   // ambiente
   const E = [[0, 'night', 'dawn', 0, S.ebro], [S.ebro, 'dawn', 'day', S.rewind - 2, S.rewind + 4], [S.capilla, 'day', 'day', 0, 1], [S.bells - 2, 'day', 'golden', S.bells - 2, S.bells + 2],
-    [S.sitios, 'golden', 'dusk', S.sitios, S.sitios + 8], [S.bombs - 2, 'dusk', 'night', S.bombs - 2, S.bombs + 1], [S.ofrenda, 'night', 'dawn', C('ofrenda', 1) - 1, C('ofrenda', 1) + 4]];
+    [S.sitios, 'golden', 'dusk', S.sitios, S.sitios + 8], [S.bombs - 2, 'dusk', 'night', S.bombs - 2, S.bombs + 1], [S.azuara + 3, 'night', 'dawn', cue('azuara', 1).s - 1, cue('azuara', 1).s + 4]];
   let env = E[0]; for (const e of E) if (t >= e[0]) env = e;
   setEnv(env[1], env[2], sm(env[3], env[4], t));
-  interiorLights.visible = false; shaftM.uniforms.op.value = 0; dust.material.opacity = 0;
-  grade.uniforms.warm.value = isPhoto ? 0 : 0.3;
-  if (bridge.globe) bridge.globe.emissiveIntensity = skyU.stars.value > 0.2 || env[1] === 'dawn' && t < S.rewind ? 2.2 : 0;
+  const inside = camera.position.y < 22 && Math.abs(camera.position.x) < 64 && Math.abs(camera.position.z) < 33;
+  interiorLights.visible = inside || (t > cue('bombs', 2).s - 0.5 && t < S.azuara);
+  shaftM.uniforms.op.value = inside ? 1 : 0; dust.material.opacity = inside ? 0.7 : 0;
+  hemi.intensity *= inside ? 0.6 : 1;
+  grade.uniforms.warm.value = inside ? 1 : 0.3;
 
-  // fundidos: inicio, final y cada cambio entre 3D y fotografía (o entre fotografías)
+  // fundido a negro: inicio, cortes, final
   let fade = 1 - sm(1.5, 4.5, t);
-  for (let i = 1; i < SHOTS.length; i++) {
-    const p = SHOTS[i - 1], q = SHOTS[i];
-    if ((p.photo || q.photo) && p.photo !== q.photo) fade = Math.max(fade, 1 - Math.min(1, Math.abs(t - q.t0) / 0.32));
-  }
+  for (const cut of [cue('bombs', 2).s, S.azuara, cue('azuara', 1).s]) fade = Math.max(fade, 1 - Math.min(1, Math.abs(t - cut) / 0.45));
   fade = Math.max(fade, sm(TOTAL - 2.5, TOTAL - 0.2, t));
   grade.uniforms.fade.value = fade; grade.uniforms.time.value = t;
-  const r3 = cue('rewind', 3);
-  grade.uniforms.sepia.value = isPhoto ? 0 : sm(r3.s - 1, r3.s + 1, t) * (1 - sm(r3.e, r3.e + 1.5, t)) * 0.7;
+  grade.uniforms.sepia.value = sm(cue('rewind', 3).s - 1, cue('rewind', 3).s + 1, t) * (1 - sm(cue('rewind', 3).e + 0.6, cue('rewind', 3).e + 3, t)) * 0.7;
 
-  // VIAJE EN EL TIEMPO: las torres se hunden, el templo barroco desaparece; tras el tímpano, se reconstruye
-  const r1 = cue('rewind', 1), R4e = CE('rewind', 4);
+  // VIAJE EN EL TIEMPO
+  const r1 = cue('rewind', 1), r3 = cue('rewind', 3);
   const sinkRiver = sm(r1.s + 0.4, r1.s + 3.4, t), sinkPlaza = sm(at('rewind', 1, 'La de la plaza'), at('rewind', 1, 'La de la plaza') + 3, t);
-  const rebuild = sm(R4e + 0.6, S.capilla - 0.4, t);
+  const rebuild = sm(r3.e + 0.7, S.capilla - 0.9, t);
   const baroqueGone = sm(r3.s, r3.s + 2.6, t) * (1 - rebuild);
-  const towersBack = sm(R4e + 1.2, S.capilla - 0.3, t);
+  const towersBack = sm(r3.e + 1.6, S.capilla - 0.6, t);
   const rs = (g, k) => { if (groups[g]) groups[g].position.y = -96 * k; };
   rs('Tower_NW', sinkRiver * (1 - towersBack)); rs('Tower_NE', sinkRiver * (1 - towersBack)); rs('Tower_SE', sinkPlaza * (1 - towersBack)); rs('Bells_SE', sinkPlaza * (1 - towersBack));
   clipPlane.constant = baroqueGone > 0 ? 100 * (1 - baroqueGone) - 1 : 400;
-  fire.material.opacity = sm(at('rewind', 3, 'incendio'), at('rewind', 3, 'incendio') + 0.5, t) * (1 - sm(r3.e + 0.2, r3.e + 1.0, t));
+  const gotOn = sm(r3.s + 0.5, r3.s + 2, t) * (1 - sm(at('rewind', 3, 'Y antes'), at('rewind', 3, 'Y antes') + 1.5, t)) + sm(r3.e + 0.3, r3.e + 0.7, t) * (1 - sm(r3.e + 1.0, r3.e + 1.9, t));
+  const romOn = sm(at('rewind', 3, 'Y antes'), at('rewind', 3, 'Y antes') + 1.4, t) * (1 - sm(r3.e + 0.2, r3.e + 0.9, t));
+  const ghost = (g, k) => { if (!groups[g]) return; groups[g].visible = k > 0.01; groups[g].userData.mat.uniforms.op.value = k; groups[g].traverse(o => { if (o.userData.edge) o.material.opacity = k * 0.8; }); };
+  ghost('Gotico', gotOn); ghost('Romanico', romOn);
+  const fireK = sm(at('rewind', 3, 'incendio'), at('rewind', 3, 'incendio') + 0.5, t) * (1 - sm(r3.e + 0.2, r3.e + 1.2, t));
+  fire.material.opacity = fireK;
+  // contador de años al reconstruir
   const yr = document.getElementById('yearRoll');
-  if (yr) { const k = sm(R4e + 0.6, S.capilla - 0.4, t); yr.textContent = k >= 1 ? 'HOY' : Math.round(1515 + (2026 - 1515) * k); }
+  if (yr) { const k = sm(r3.e + 0.6, S.capilla - 0.5, t); const ys = [1515, 1681, 1765, 1872, 1907, 1961, 2026]; const y = Math.round(1515 + (2026 - 1515) * k); yr.textContent = k >= 1 ? 'HOY' : y; }
+  // polvo de derrumbe
   const bk = Math.max(sinkRiver * (1 - sinkRiver) * 4, sinkPlaza * (1 - sinkPlaza) * 4);
   burst.material.opacity = bk * 0.5; burst.position.copy(sinkPlaza > 0.02 && sinkPlaza < 0.98 ? B(64, -32.5, 0) : B(0, 32.5, 0)); burst.scale.set(sinkPlaza > 0.02 && sinkPlaza < .98 ? 1 : 8, 1, 1);
 
-  // CAMPANAS
-  const pil = named['Bell_Pilara'], pk = clamp((t - (S.sitios - 6.8)) / 6.5);
+  // CAMPANAS: bandeo de la Pilara
+  const pil = named['Bell_Pilara'];
+  const pk = clamp((t - (S.sitios - 6.8)) / 6.5);
   if (pil) pil.rotation.z = pk > 0 && pk < 1 ? -Math.PI * 2 * 2 * ease(pk) : 0;
-  for (const n of ['Bell_Indalecia', 'Bell_Braulia', 'Bell_PetraPaula', 'Bell_JuanaPaula']) if (named[n]) named[n].rotation.z = Math.sin(t * 1.7 + n.length) * 0.35 * (sm(S.sitios - 6.5, S.sitios - 5.5, t) * (1 - sm(S.sitios + 2, S.sitios + 4, t)) + sm(C('azuara', 1), C('azuara', 1) + 1, t) * (1 - sm(S.ofrenda - 1, S.ofrenda, t)));
+  // balanceo suave del resto en el inventario
+  for (const n of ['Bell_Indalecia', 'Bell_Braulia', 'Bell_PetraPaula', 'Bell_JuanaPaula']) if (named[n]) named[n].rotation.z = Math.sin(t * 1.7 + n.length) * 0.35 * sm(S.sitios - 6.5, S.sitios - 5.5, t) * (1 - sm(S.sitios + 2, S.sitios + 4, t));
   const sit = named['Bell_Sitios'];
   if (sit) sit.rotation.z = Math.sin((t - (S.bombs - 5)) * 2.4) * 0.05 * sm(S.bombs - 5, S.bombs - 4.5, t) * (1 - sm(S.bombs, S.bombs + 1, t));
-  bellLight.position.copy(t < S.sitios + 3 || t > S.azuara ? B(-64, -34, 60) : B(64, -34, 60));
-  bellLight.intensity = (t > C('bells', 1) && t < S.sitios + 10) || (t > C('sitios', 0) && t < S.bombs) || (t > S.azuara && t < S.ofrenda) ? 40 : 0;
-  // la campana de los Sitios viaja desde la plaza de San Felipe (1892)
-  const tnd = C('sitios', 2), fly = named['Bell_Sitios'];
-  if (fly) {
+  bellLight.position.copy(t < S.sitios + 3 ? B(-64, -34, 60) : B(64, -34, 60)); bellLight.intensity = (t > cue('bells', 1).s && t < S.sitios + 10) || (t > cue('sitios', 0).s && t < S.bombs) ? 40 : 0;
+
+  // TORRE NUEVA: aparece, la campana viaja, desaparece
+  const tn = groups.TorreNueva, tns = cue('sitios', 1).s, tnd = cue('sitios', 2).s, TNc = B(TN_POS[0], TN_POS[1], 0);
+  if (tn) {
+    const on = sm(tns + 0.3, tns + 2.5, t) * (1 - sm(tnd + 2.2, tnd + 4.5, t));
+    ghost('TorreNueva', on); tn.position.y = -80 * (1 - sm(tns, tns + 3, t));
+    const c = B(-260, -330, 0); tn.rotation.set(0, 0, 0);
+    tn.position.x = 0; tn.position.z = 0;
+    // inclinación (esquemática) aplicada como rotación alrededor de su base
+    tn.matrixAutoUpdate = false; const m = new THREE.Matrix4().makeTranslation(TNc.x, tn.position.y, TNc.z).multiply(new THREE.Matrix4().makeRotationZ(-0.045)).multiply(new THREE.Matrix4().makeTranslation(-c.x, -c.y, -c.z));
+    tn.matrix.copy(m);
+  }
+  const fly = named['Bell_Sitios'];
+  if (fly && groups.Bells_SE) {
     if (!fly.userData.home) fly.userData.home = fly.position.clone();
     const k = sm(tnd + 0.4, tnd + 3.6, t), from = B(TN_POS[0], TN_POS[1], 66), to = fly.userData.home;
-    if (t > tnd - 0.2 && t < tnd + 4) { const p = from.clone().lerp(to, k); p.y += Math.sin(k * Math.PI) * 60; fly.position.copy(p); } else fly.position.copy(to);
+    if (t > tns && t < tnd + 4) {
+      const p = from.clone().lerp(to, k); p.y += Math.sin(k * Math.PI) * 60; fly.position.copy(t < tnd + 0.4 ? from : p);
+    } else { fly.position.copy(to); }
   }
-  if (groups.TorreNueva) groups.TorreNueva.visible = false;
 
-  // BOMBAS 1936: caen al terminar la primera frase y quedan suspendidas antes del impacto
-  const bf = groups.BombsFall, kb0 = C('bombs', 0) + 2.5;
+  // BOMBAS 1936
+  const kb = cue('bombs', 1);
+  const bf = groups.BombsFall;
   if (bf) {
-    bf.visible = t > kb0 - 0.5 && t < C('bombs', 3) && !isPhoto;
+    bf.visible = t > kb.s - 0.5 && t < cue('bombs', 2).s;
     if (bf.visible) {
-      const k = 0.9 * ease(clamp((t - kb0) / (C('bombs', 1) - kb0)));
+      const k = 0.9 * ease(clamp((t - kb.s + 0.4) / (at('bombs', 1, 'Ninguna') - kb.s + 0.4)));
       const targets = [[10, -62, 1], [20, -5, 33], [-15, 10, 33], [0, 110, 1]];
-      bf.children.forEach((o, i) => { const tg = targets[i % 4]; o.position.copy(B(tg[0], tg[1], tg[2] + (1 - k) * 95 + 3)); o.rotation.set(0, t * 0.6 + i, 0); o.visible = true; o.scale.setScalar(3.2); if (o.material && i === 3) { o.material.transparent = true; o.material.opacity = 0.3; } });
+      bf.children.forEach((o, i) => { const tg = targets[i % 4]; const p = B(tg[0], tg[1], tg[2] + (1 - k) * 95 + 3); o.position.copy(p); o.rotation.set(0, t * 0.6 + i, 0); o.visible = true; o.scale.setScalar(3.2); if (o.material && i === 3) { o.material.transparent = true; o.material.opacity = 0.3; } });
     }
   }
   grade.uniforms.flash.value = 0;
-  bombLight.intensity = t > kb0 - 0.5 && t < C('bombs', 3) ? 650 : 0;
+  bombLight.intensity = t > kb.s - 0.5 && t < cue('bombs', 2).s - 0.4 ? 650 : 0;
+  // LA VIRGEN: luz, manto que se retira (días 2, 12 y 20), torbellino de 450 mantos
+  { const v0 = S.virgen - 1, vEnd = S.goya + 3, on = t > v0 && t < vEnd;
+    virgin.spot.intensity = on ? 7 * sm(v0, v0 + 2, t) : 0; virgin.glow.intensity = on ? 1.2 : 0;
+    virgin.rays.rotation.z = Math.sin(t * 0.4) * 0.03;
+    const pOff = at('virgen', 3, 'pero los') + 0.6, k = sm(pOff, pOff + 2.2, t) * (1 - sm(cue('virgen', 4).s + 1, cue('virgen', 4).s + 3, t));
+    virgin.manto.position.y = virgin.mantoY + k * 1.6; virgin.manto.material.opacity = 1 - k; virgin.manto.visible = k < 0.99;
+    const mOn = sm(at('virgen', 3, 'Cada'), at('virgen', 3, 'Tiene') + 0.5, t) * (1 - sm(pOff - 0.6, pOff + 0.8, t));
+    virgin.mm.visible = mOn > 0.01; virgin.mm.material.opacity = mOn;
+    if (virgin.mm.visible) { const D = new THREE.Object3D(), c = B(VN[0], VN[1], 0);
+      virgin.mp.forEach((q, i) => { const a = q.a + t * (0.25 + 0.6 / q.r); D.position.set(c.x + Math.cos(a) * q.r, q.y + Math.sin(t * .7 + i) * .2, c.z + Math.sin(a) * q.r); D.rotation.set(Math.sin(t + i) * .3, -a, 0); D.scale.setScalar(0.9 + q.s); D.updateMatrix(); virgin.mm.setMatrixAt(i, D.matrix); });
+      virgin.mm.instanceMatrix.needsUpdate = true; } }
+  // Ofrenda de Flores: la montaña crece en el desenlace
+  { const k = sm(cue('azuara', 1).s + 1, TOTAL - 3, t); flowers.geometry.setDrawRange(0, Math.floor(9000 * k)); }
 
-  // ondas de las campanas
+  // sala del campanero
+  stair.lamp.intensity = t > S.azuara - 1 && t < cue('azuara', 1).s ? 9 * sm(S.azuara, S.azuara + 2.5, t) : 0;
+
+  // ondas
   for (const w of waves) {
-    const k = (t - w.t) / 9; const on = k > 0 && k < 1 && !isPhoto; w.m.visible = w.sphere.visible = on;
+    const k = (t - w.t) / 9; const on = k > 0 && k < 1; w.m.visible = w.sphere.visible = on;
     if (on) { const r = 5 + k * 900 * w.strength; w.m.scale.set(r, r, r); w.m.material.uniforms.op.value = (1 - k) * 1.2; w.sphere.scale.setScalar(r * 0.6); w.sphere.material.uniforms.op.value = (1 - k) * 0.1; }
   }
   camShake.set(0, 0, 0);
   for (const w of waves) { const k = t - w.t; if (k > 0 && k < 1.2) camShake.set((Math.random() - .5), (Math.random() - .5), (Math.random() - .5)).multiplyScalar(0.08 * w.strength * (1 - k / 1.2)); }
-  for (const P of [fire, burst]) {
+
+  // partículas
+  for (const P of [dust, fire, burst]) {
     if (P.material.opacity <= 0) continue;
     const a = P.geometry.attributes.position, v = P.geometry.userData.v, p0 = P.geometry.userData.p0;
     for (let i = 0; i < a.count; i++) {
-      const sp = P === fire ? 8 : 6; const y = p0[i * 3 + 1] + ((t * sp * v[i * 3 + 1]) % 30);
-      a.setXYZ(i, p0[i * 3] + Math.sin(t * .3 + i) * 2 + v[i * 3] * (P === burst ? t % 3 * 6 : 0), y % 30, p0[i * 3 + 2] + v[i * 3 + 2] * (P === burst ? t % 3 * 6 : 0));
+      const sp = P === fire ? 8 : P === burst ? 6 : 0.15;
+      let y = p0[i * 3 + 1] + ((t * sp * v[i * 3 + 1]) % 30);
+      a.setXYZ(i, p0[i * 3] + Math.sin(t * .3 + i) * (P === dust ? .5 : 2) + v[i * 3] * (P === burst ? t % 3 * 6 : 0), P === dust ? p0[i * 3 + 1] + Math.sin(t * .2 + i) * .5 : y % 30, p0[i * 3 + 2] + v[i * 3 + 2] * (P === burst ? t % 3 * 6 : 0));
     }
     a.needsUpdate = true;
   }
   waterU.time.value = t; waterU.sky.value.copy(skyU.bot.value); skyU.time.value = t;
   if (waterU.reflect) { const W = waterU.reflect.material.uniforms; W.time.value = t * 0.5; W.sunDirection.value.copy(skyU.sunDir.value).normalize(); W.sunColor.value.copy(sun.color).multiplyScalar(Math.min(1, sun.intensity / 2.5)); W.waterColor.value.copy(scene.fog.color).multiplyScalar(0.18); }
-  lensflare.visible = !isPhoto && skyU.stars.value < 0.5 && skyU.sunDir.value.y > 0.02;
-  flareCarrier.position.copy(camera.position).addScaledVector(skyU.sunDir.value.clone().normalize(), 3000);
+  // destello de lente (solo con sol visible)
+  const sunVis = skyU.stars.value < 0.5 && !inside && skyU.sunDir.value.y > 0.02;
+  lensflare.visible = sunVis; flareCarrier.position.copy(camera.position).addScaledVector(skyU.sunDir.value.clone().normalize(), 3000);
+  // velas en la Santa Capilla
+  interiorLights.children[0].intensity = 70 * (0.82 + 0.1 * Math.sin(t * 9.1) + 0.08 * Math.sin(t * 23.7 + 1.3));
+  // palomas: se agitan con cada golpe de campana
+  birdU.time.value = t; let agit = 0; for (const w of waves) { const d = t - w.t; if (d > 0 && d < 8) agit = Math.max(agit, Math.exp(-d * 0.45) * w.strength); }
+  { const D = new THREE.Object3D(); const night = t > S.bombs - 3 && t < S.azuara + 2; birds.im.visible = !night && !inside;
+    birds.b.forEach((q, i) => { q.a += q.w * (1 + agit * 2.5) * 0.016; const r = q.r * (1 + agit * 1.8), h = q.h + agit * 25 + Math.sin(t * .5 + i) * 3;
+      D.position.set(q.c.x + Math.cos(q.a) * r, h, q.c.z + Math.sin(q.a) * r); D.rotation.set(0, -q.a - (q.w > 0 ? 0 : Math.PI), Math.sin(t + i) * .2); D.scale.setScalar(q.s); D.updateMatrix(); birds.im.setMatrixAt(i, D.matrix); });
+    birds.im.instanceMatrix.needsUpdate = true; }
+  // gente en la plaza (de día y con el templo en pie)
+  { const D = new THREE.Object3D(); people.im.visible = !(t > S.bombs - 3 && t < S.azuara) && clipPlane.constant > 300 && !inside;
+    people.p.forEach((q, i) => { let x = q.x + q.v * t; x = ((x + 260) % 540 + 540) % 540 - 260; D.position.copy(B(x, q.y + Math.sin(t * .2 + i) * 2, 0)); D.scale.set(1, 1 + (i % 5) * .04, 1); D.updateMatrix(); people.im.setMatrixAt(i, D.matrix); });
+    people.im.instanceMatrix.needsUpdate = true; }
+  for (const m of ghostMats) m.uniforms.time.value = t;
 
-  const sb = SUBS.find(s => t >= s.s - 0.05 && t < s.e + 0.45);
+  // subtítulos y rótulos
+  const sb = SUBS.find(s => t >= s.s - 0.05 && t < s.e + 0.35);
   const txt = sb ? sb.text : '';
   if (subEl.dataset.t !== txt) { subEl.dataset.t = txt; subEl.textContent = txt; subEl.classList.toggle('on', !!txt); }
   for (const c of CARDS) c.el.classList.toggle('on', t >= c.t0 && t < c.t1);
 }
 
-const quality = { gtao: true, reflect: true };
 let frames = 0, slow = 0, lastT = performance.now();
 function loop() {
   if (!playing) return;
+  // calidad adaptativa: si el equipo no llega a ~35 fps, se desactiva la oclusión ambiental y se baja la resolución
   const now = performance.now(), dt = now - lastT; lastT = now; frames++;
   if (frames > 30 && dt > 28) slow++; else if (slow > 0) slow -= 0.25;
-  if (slow > 45 && quality.reflect) { quality.reflect = false; slow = 0; }
-  else if (slow > 45 && quality.gtao) { quality.gtao = false; slow = 0; }
-  else if (slow > 45 && renderer.getPixelRatio() > 1) { renderer.setPixelRatio(1); resize(); slow = 0; }
+  if (slow > 45 && waterU.reflect.visible) { waterU.reflect.visible = false; waterU.simple.visible = true; slow = 0; }
+  else if (slow > 45 && gtao.enabled) { gtao.enabled = false; slow = 0; }
+  else if (slow > 45 && !gtao.enabled && renderer.getPixelRatio() > 1) { renderer.setPixelRatio(1); resize(); slow = 0; }
   const t = audio.time();
-  update(t); composer.render();
+  update(t);
+  composer.render();
   if (t >= TOTAL) { playing = false; document.getElementById('end').classList.add('on'); document.body.classList.remove('playing'); return; }
   requestAnimationFrame(loop);
 }
@@ -875,11 +836,12 @@ function loop() {
 // ------------------------------------------------------------------ ARRANQUE
 (async function init() {
   const btn = document.getElementById('start');
-  waterU = buildCity(); shaftM = buildCeiling(); buildPhotos();
-  await loadModel(); await loadBridge();
-  for (const g of ['Romanico', 'Gotico', 'TorreNueva', 'Interior', 'Capilla', 'Retablo', 'Bombs']) if (groups[g]) groups[g].visible = false;
+  waterU = buildCity(); shaftM = buildCeiling(); stair = buildStair(); birds = buildBirds(140); people = buildPeople(220); buildVirgin(); buildFlowers();
+  await loadModel();
+  // bombas que caen: 3 + 1 dudosa (las fuentes no coinciden)
   const bf = groups.BombsFall; const src = bf.children[0];
   for (let i = 0; i < 3; i++) { const c = src.clone(); c.material = src.material.clone(); bf.add(c); }
+  // cada bomba dentro de un contenedor propio (la compresión aplica escala/desplazamiento al nodo)
   for (const o of [...bf.children]) { const w = new THREE.Group(); bf.add(w); w.attach(o); o.position.sub(new THREE.Box3().setFromObject(o).getCenter(new THREE.Vector3())); w.userData.mesh = o; w.material = o.material; }
   bf.children.filter(o => o.isMesh).forEach(o => bf.remove(o));
   bf.children.forEach(w => { const o = w.userData.mesh; o.material = o.material.clone(); o.material.clippingPlanes = []; o.material.color.set(0xb8c0ca); o.material.emissive = new THREE.Color(0x5a6270); w.material = o.material; const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.12, 14, 8, 1, true), new THREE.MeshBasicMaterial({ color: 0xcfe3ff, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false })); tr.position.y = 8.6 / 3.2; tr.scale.setScalar(1 / 3.2); w.add(tr); });
@@ -887,12 +849,13 @@ function loop() {
   setEnv('dawn', 'dawn', 0); update(S.ebro + 6); composer.render();
   btn.disabled = false; btn.textContent = 'INICIAR DOCUMENTAL';
   window.__render = t => { update(t); composer.render(); };
-  window.__dbg = { groups, named, clipPlane, THREE };
+  window.__dbg = { groups, named, clipPlane, THREE };   // utilidad de prueba (render de un instante)
   btn.onclick = async () => {
     document.getElementById('intro').classList.add('off'); document.body.classList.add('playing');
     try { await document.documentElement.requestFullscreen?.(); } catch (e) { }
     audio = new Audio(b64(window.__VO).buffer, TL, { S, cue, at });
     await audio.start();
+    // ondas de campana (visual) sincronizadas con el audio
     for (const tt of audio.waveTimes) spawnWave(tt.t, tt.pos === 'SW' ? B(-64, -32.5, 0) : B(64, -32.5, 0), tt.s, tt.pos === 'SW' ? 0xffd8a0 : 0xffb070);
     playing = true; loop();
   };

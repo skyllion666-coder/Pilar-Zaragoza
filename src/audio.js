@@ -133,6 +133,8 @@ export class Audio {
     prog.forEach((c, i) => A(S.ebro + i * 2.6, w => this.pad(w, 3.0, c, 0.07)));
     const beat = 0.62;
     melody(S.ebro + 0.4, beat, [['A4', 1], ['D5', 1], ['C5', .5], ['A4', 1.5], ['G4', 1], ['A4', 1], ['F4', 1], ['E4', 1], ['D4', 2], ['A3', 1], ['D4', 1], ['F4', .5], ['E4', .5], ['D4', 2]]);
+    // PUENTE DE PIEDRA: paso bajo el ojo central
+    A(cue('ebro', 1).s + 2.2, w => this.whoosh(w, 2.6, 0.32));
     // REBOBINADO: tic-tac acelerando, graves, crepitar del incendio
     const r1 = cue('rewind', 1), r3 = cue('rewind', 3);
     for (let t = S.rewind - 0.5, dt = 0.5; t < r3.e + 0.6; t += dt, dt = Math.max(0.14, dt * 0.985)) A(t, w => this.noiseHit(w, 3200, 6, 0.06, 0.03, 'bandpass'));
@@ -159,7 +161,7 @@ export class Audio {
     ['F', 'C', 'Dm', 'Bb', 'F', 'C', 'A', 'Dmaj'].forEach((c, i) => A(S.virgen + 5.5 + i * 3.6, w => this.pad(w, 4.0, c, 0.065)));
     A(at('virgen', 3, 'Tiene') - 0.3, w => this.whoosh(w, 3.5, 0.18));
     A(at('virgen', 3, 'pero los') + 0.6, w => { this.bell(w, 0.62, 0.3, -0.2); this.noiseHit(w, 5200, 4, 0.04, 1.8, 'bandpass', 2400, 0.4); });
-    melody(cue('virgen', 4).s + 0.5, 0.95, [['D4', 2], ['F4', 1], ['A4', 2], ['G4', 1], ['F4', 2], ['E4', 1], ['D4', 3]], 0.07);
+    melody(cue('virgen', 6).s + 0.5, 0.95, [['D4', 2], ['F4', 1], ['A4', 2], ['G4', 1], ['F4', 2], ['E4', 1], ['D4', 3]], 0.07);
     // CAMPANAS: inventario (cada campana suena una vez, de aguda a grave)
     A(S.bells - 1.3, w => this.whoosh(w, 2.2, 0.25));
     A(S.bells - 1, w => this.wind(w, S.sitios - S.bells + 4, 0.15, 700));
@@ -192,8 +194,9 @@ export class Audio {
     A(nin, w => { this.boom(w, 0.45); });
     ['Dm', 'Bb', 'Gm', 'A'].forEach((c, i) => A(nin + 1.2 + i * 3.4, w => this.pad(w, 3.8, c, 0.05)));
     // AZUARA: tema en solitario, después repique final
-    const a1 = cue('azuara', 1).s;
+    const a1 = cue('ofrenda', 1).s;
     A(S.azuara, w => this.drone(w, a1 - S.azuara, N.D2, 0.06, 200));
+    ['Dm', 'Bb', 'F', 'C', 'Dm', 'Gm', 'A', 'Dm'].forEach((c, i) => A(S.ofrenda + i * 2.4, w => this.pad(w, 2.8, c, 0.06)));
     melody(S.azuara + 1.2, 0.8, [['A4', 1], ['D5', 1], ['C5', .5], ['A4', 1.5], ['G4', 1], ['A4', 1], ['F4', 1], ['E4', 1], ['D4', 3]], 0.11);
     ['Dm', 'Bb', 'F', 'C', 'Dm', 'Bb', 'C', 'Dmaj'].forEach((c, i) => A(a1 + i * 2.8, w => this.pad(w, 3.4, c, 0.1)));
     melody(a1 + 0.2, 0.7, [['D4', 1], ['F4', 1], ['A4', 1], ['D5', 2], ['C5', 1], ['A4', 1], ['G4', 1], ['A4', 2], ['F4', 1], ['G4', 1], ['A4', 1], ['D5', 3]], 0.12);

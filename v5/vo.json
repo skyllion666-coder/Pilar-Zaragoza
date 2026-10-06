@@ -1,0 +1,282 @@
+[
+ {
+  "scene": "ebro",
+  "i": 0,
+  "text": "Zaragoza. A orillas del Ebro, un templo que tardó casi tres siglos en terminarse.",
+  "dur": 5.11,
+  "file": "v5/vo/ebro_0.wav",
+  "score": 1.0
+ },
+ {
+  "scene": "ebro",
+  "i": 1,
+  "text": "Frente a él, el Puente de Piedra, de siete ojos, levantado entre mil cuatrocientos uno y mil cuatrocientos cuarenta. Una riada se llevó dos de sus arcos en mil seiscientos cuarenta y tres.",
+  "dur": 10.48,
+  "file": "v5/vo/ebro_1.wav",
+  "score": 0.983
+ },
+ {
+  "scene": "ebro",
+  "i": 2,
+  "text": "Desde mil novecientos noventa y uno lo guardan cuatro leones de bronce, obra de Francisco Rallo.",
+  "dur": 4.62,
+  "file": "v5/vo/ebro_2.wav",
+  "score": 1.0
+ },
+ {
+  "scene": "ebro",
+  "i": 3,
+  "text": "Y dentro del templo, una columna de jaspe que, según la tradición, la Virgen dejó al apóstol Santiago en el año cuarenta.",
+  "dur": 5.86,
+  "file": "v5/vo/ebro_3.wav",
+  "score": 0.987
+ },
+ {
+  "scene": "rewind",
+  "i": 0,
+  "text": "Volvamos atrás en el tiempo.",
+  "dur": 1.68,
+  "file": "v5/vo/rewind_0.wav",
+  "score": 1.0
+ },
+ {
+  "scene": "rewind",
+  "i": 1,
+  "text": "Las torres del río son de mil novecientos sesenta y uno. La de la plaza, junto al Ayuntamiento, de mil novecientos siete.",
+  "dur": 6.79,
+  "file": "v5/vo/rewind_1.wav",
+  "score": 1.0
+ },
+ {
+  "scene": "rewind",
+  "i": 2,
+  "text": "El templo barroco se empezó en mil seiscientos ochenta y uno, con trazas de Felipe Sánchez revisadas por Herrera el Mozo.",
+  "dur": 6.3,
+  "file": "v5/vo/rewind_2.wav",
+  "score": 1.0
+ },
+ {
+  "scene": "rewind",
+  "i": 3,
+  "text": "Antes hubo un templo gótico mudéjar, terminado hacia mil quinientos quince. Y antes, uno románico, que un incendio arrasó en mil cuatrocientos treinta y cuatro.",
+  "dur": 9.93,
+  "file": "v5/vo/rewind_3.wav",
+  "score": 0.951
+ },
+ {
+  "scene": "rewind",
+  "i": 4,
+  "text": "De aquel templo románico se conserva una sola piedra: este tímpano con crismón, hoy en el muro sur del templo.",
+  "dur": 5.93,
+  "file": "v5/vo/rewind_4.wav",
+  "score": 0.995
+ },
+ {
+  "scene": "capilla",
+  "i": 0,
+  "text": "Desde mil setecientos cincuenta, Ventura Rodríguez diseña la Santa Capilla: un templete oval que guarda la columna.",
+  "dur": 5.79,
+  "file": "v5/vo/capilla_0.wav",
+  "score": 0.995
+ },
+ {
+  "scene": "virgen",
+  "i": 0,
+  "text": "Y en su interior, la razón de todo este templo: la Virgen del Pilar.",
+  "dur": 3.94,
+  "file": "v5/vo/virgen_0.wav",
+  "score": 1.0
+ },
+ {
+  "scene": "virgen",
+  "i": 1,
+  "text": "Es una talla de madera de solo treinta y seis centímetros, de la primera mitad del siglo quince, atribuida a Juan de la Huerta.",
+  "dur": 6.56,
+  "file": "v5/vo/virgen_1.wav",
+  "score": 0.967
+ },
+ {
+  "scene": "virgen",
+  "i": 2,
+  "text": "Se alza sobre la columna de jaspe: un metro setenta, forrada de bronce y plata.",
+  "dur": 4.85,
+  "file": "v5/vo/virgen_2.wav",
+  "score": 1.0
+ },
+ {
+  "scene": "virgen",
+  "i": 3,
+  "text": "Cada día viste un manto distinto. Tiene más de cuatrocientos cincuenta mantos, pero los días dos, doce y veinte de cada mes aparece sin manto, y se ve la columna.",
+  "dur": 8.94,
+  "file": "v5/vo/virgen_3.wav",
+  "score": 1.0
+ },
+ {
+  "scene": "virgen",
+  "i": 4,
+  "text": "La corona de su coronación, en mil novecientos cinco, la hicieron treinta y tres artesanos de la casa Ansorena, en cuarenta y cuatro días.",
+  "dur": 6.56,
+  "file": "v5/vo/virgen_4.wav",
+  "score": 0.993
+ },
+ {
+  "scene": "virgen",
+  "i": 5,
+  "text": "Y cada día, niños de hasta diez años son presentados ante ella en el camarín, una costumbre que pasa de padres a hijos.",
+  "dur": 5.68,
+  "file": "v5/vo/virgen_5.wav",
+  "score": 1.0
+ },
+ {
+  "scene": "virgen",
+  "i": 6,
+  "text": "En mil seiscientos cuarenta, un joven de Calanda, Miguel Juan Pellicer, aseguró haber recuperado la pierna que le habían amputado. La sentencia del arzobispo, en mil seiscientos cuarenta y uno, lo declaró milagro.",
+  "dur": 10.66,
+  "file": "v5/vo/virgen_6.wav",
+  "score": 0.995
+ },
+ {
+  "scene": "arte",
+  "i": 0,
+  "text": "En el altar mayor, el retablo de alabastro de Damián Forment, esculpido entre mil quinientos nueve y mil quinientos dieciocho: más antiguo que el propio templo.",
+  "dur": 8.0,
+  "file": "v5/vo/arte_0.wav",
+  "score": 0.981
+ },
+ {
+  "scene": "arte",
+  "i": 1,
+  "text": "Sobre las bóvedas pintó un joven Goya. En mil setecientos setenta y dos, la Adoración del Nombre de Dios, en el coreto.",
+  "dur": 6.87,
+  "file": "v5/vo/arte_1.wav",
+  "score": 1.0
+ },
+ {
+  "scene": "arte",
+  "i": 2,
+  "text": "Después, la cúpula Regina Martyrum. Su estilo chocó con el de su cuñado, Francisco Bayeu. Goya la terminó en mayo de mil setecientos ochenta y uno, y se marchó dolido.",
+  "dur": 9.62,
+  "file": "v5/vo/arte_2.wav",
+  "score": 0.997
+ },
+ {
+  "scene": "bells",
+  "i": 0,
+  "text": "¿Cuántas campanas tiene el Pilar? Las cifras publicadas no coinciden.",
+  "dur": 4.43,
+  "file": "v5/vo/bells_0.wav",
+  "score": 1.0
+ },
+ {
+  "scene": "bells",
+  "i": 1,
+  "text": "El inventario de los Campaneros de la Catedral de Valencia cuenta quince, en dos torres. Y una más, de señales, en el interior.",
+  "dur": 7.23,
+  "file": "v5/vo/bells_1.wav",
+  "score": 0.975
+ },
+ {
+  "scene": "bells",
+  "i": 2,
+  "text": "La mayor de las litúrgicas es la Pilara. Mil ochocientos sesenta y seis. Dos mil ciento setenta kilos.",
+  "dur": 7.11,
+  "file": "v5/vo/bells_2.wav",
+  "score": 1.0
+ },
+ {
+  "scene": "bells",
+  "i": 3,
+  "text": "Muy cerca cuelga una campana inglesa, fundida en Londres en mil setecientos sesenta y cuatro.",
+  "dur": 5.07,
+  "file": "v5/vo/bells_3.wav",
+  "score": 0.989
+ },
+ {
+  "scene": "sitios",
+  "i": 0,
+  "text": "Pero la gran voz está en la otra torre. Es la Campana de los Sitios, fundida en mil setecientos once, con más de seis mil kilos.",
+  "dur": 6.97,
+  "file": "v5/vo/sitios_0.wav",
+  "score": 1.0
+ },
+ {
+  "scene": "sitios",
+  "i": 1,
+  "text": "Colgaba de la Torre Nueva, la torre inclinada de Zaragoza, atalaya en la Guerra de la Independencia. Por su papel en aquella guerra, dejó de llamarse el Relox y pasó a ser la Campana de los Sitios.",
+  "dur": 10.11,
+  "file": "v5/vo/sitios_1.wav",
+  "score": 0.979
+ },
+ {
+  "scene": "sitios",
+  "i": 2,
+  "text": "Derribada la Torre Nueva en mil ochocientos noventa y dos, su campana pasó al Pilar.",
+  "dur": 4.08,
+  "file": "v5/vo/sitios_2.wav",
+  "score": 1.0
+ },
+ {
+  "scene": "bombs",
+  "i": 0,
+  "text": "Tres de agosto de mil novecientos treinta y seis. De madrugada, un avión bombardea el templo.",
+  "dur": 4.88,
+  "file": "v5/vo/bombs_0.wav",
+  "score": 1.0
+ },
+ {
+  "scene": "bombs",
+  "i": 1,
+  "text": "La placa del propio templo habla de tres bombas; otras fuentes, de cuatro. Una se clavó en la plaza, donde aún hay una marca. Otras atravesaron la cubierta. Ninguna explotó.",
+  "dur": 10.46,
+  "file": "v5/vo/bombs_1.wav",
+  "score": 0.994
+ },
+ {
+  "scene": "bombs",
+  "i": 2,
+  "text": "La tradición lo llamó milagro. Estudios posteriores apuntan a fallos de las espoletas, o a un sabotaje.",
+  "dur": 6.67,
+  "file": "v5/vo/bombs_2.wav",
+  "score": 1.0
+ },
+ {
+  "scene": "bombs",
+  "i": 3,
+  "text": "Dos de ellas cuelgan hoy de un pilar, junto a la Santa Capilla.",
+  "dur": 3.62,
+  "file": "v5/vo/bombs_3.wav",
+  "score": 1.0
+ },
+ {
+  "scene": "azuara",
+  "i": 0,
+  "text": "En la escalera que sube a las campanas, alguien escribió con letras enormes, quizá a finales del siglo dieciocho: José Azuara, campanero.",
+  "dur": 6.96,
+  "file": "v5/vo/azuara_0.wav",
+  "score": 0.962
+ },
+ {
+  "scene": "azuara",
+  "i": 1,
+  "text": "El último campanero, el tío Simeón Millán, tocó a mano durante buena parte del siglo veinte. Poco después de su muerte, hacia mil novecientos sesenta y cuatro, las campanas se electrificaron.",
+  "dur": 9.92,
+  "file": "v5/vo/azuara_1.wav",
+  "score": 0.978
+ },
+ {
+  "scene": "ofrenda",
+  "i": 0,
+  "text": "Y cada doce de octubre, desde mil novecientos cincuenta y ocho, la plaza se cubre de flores para ella. Es la Ofrenda.",
+  "dur": 6.64,
+  "file": "v5/vo/ofrenda_0.wav",
+  "score": 1.0
+ },
+ {
+  "scene": "ofrenda",
+  "i": 1,
+  "text": "Las campanas cambian. Los campaneros pasan. El sonido se queda.",
+  "dur": 4.84,
+  "file": "v5/vo/ofrenda_1.wav",
+  "score": 1.0
+ }
+]

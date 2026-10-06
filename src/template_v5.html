@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>El Pilar · Memoria de piedra y bronce — documental 3D </title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#000;color:#f3ead9;font-family:"Palatino Linotype",Palatino,Georgia,serif;overflow:hidden;height:100%}
+canvas{position:fixed;inset:0;width:100vw;height:100vh;display:block}
+.bar{position:fixed;left:0;right:0;height:0;background:#000;z-index:2;transition:height 1.6s ease}
+#bt{top:0}#bb{bottom:0}
+body.playing #bt,body.playing #bb{height:9vh}
+#sub{position:fixed;left:50%;bottom:3.2vh;transform:translateX(-50%);z-index:5;max-width:min(92vw,1300px);text-align:center;
+ font-family:"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;font-weight:600;font-size:clamp(20px,2.65vw,40px);line-height:1.28;
+ color:#fff;background:rgba(0,0,0,.72);padding:.32em .8em;border-radius:.25em;text-shadow:0 2px 3px #000;opacity:0;transition:opacity .25s}
+#sub.on{opacity:1}
+#cards .card{position:fixed;left:5vw;top:13vh;z-index:4;opacity:0;transform:translateY(12px);transition:opacity .7s,transform .9s;pointer-events:none;
+ max-width:min(46vw,760px);text-shadow:0 2px 12px rgba(0,0,0,.95),0 0 2px #000}
+#cards .card.on{opacity:1;transform:none}
+.card .k{font-family:"Segoe UI",Roboto,Arial,sans-serif;letter-spacing:.32em;font-size:clamp(13px,1.15vw,19px);color:#ffd79a;font-weight:700}
+.card .big{font-size:clamp(40px,6.2vw,104px);font-weight:700;letter-spacing:.04em;line-height:1.02;color:#fff}
+.card .m{font-family:"Segoe UI",Roboto,Arial,sans-serif;font-size:clamp(17px,1.65vw,27px);line-height:1.35;margin-top:.35em;color:#f4ecdf;font-weight:500}
+.card .small{font-size:clamp(12px,1.05vw,16px);opacity:.85}
+.card .tag{display:inline-block;font-family:"Segoe UI",Roboto,Arial,sans-serif;font-weight:800;letter-spacing:.25em;font-size:clamp(13px,1.2vw,19px);background:#b8862e;color:#120c04;padding:.2em .6em;border-radius:.2em;margin-bottom:.3em;text-shadow:none}
+.card .tag.alt{background:#6fb2d8}
+#cards .card.center{left:50%;top:40%;transform:translate(-50%,-50%) scale(.98);text-align:center;max-width:90vw}
+#cards .card.center.on{transform:translate(-50%,-50%)}
+.card .title{font-size:clamp(56px,11vw,190px);letter-spacing:.18em;font-weight:400;color:#fff4dc}
+.card .subtitle{font-size:clamp(18px,2.2vw,36px);letter-spacing:.3em;text-transform:uppercase;color:#ffd79a;font-style:italic}
+#cards .card.wide{max-width:min(88vw,1250px);background:rgba(8,6,4,.72);padding:1.2vw 1.6vw;border-left:3px solid #c99a4a}
+.card .cols{display:flex;gap:3vw;font-family:"Segoe UI",Roboto,Arial,sans-serif;font-size:clamp(15px,1.45vw,24px);line-height:1.42;margin-top:.5em}
+#cards .card.photo{left:auto;right:4vw;top:10.5vh;max-width:none;text-align:center}
+#cards .card.photo img{height:56vh;border:3px solid #c99a4a;box-shadow:0 10px 40px #000}
+#cards .card.photo .cap{font-family:"Segoe UI",Roboto,Arial,sans-serif;font-size:clamp(11px,.95vw,15px);margin-top:.4em;opacity:.9}
+#cards .card.disclaim{top:auto;bottom:16vh;left:auto;right:4vw;max-width:min(42vw,620px);font-family:"Segoe UI",Roboto,Arial,sans-serif;font-size:clamp(13px,1.1vw,18px);
+ background:rgba(0,0,0,.62);padding:.5em .8em;border-left:3px solid #6fb2d8;color:#d8ecf7;font-style:italic}
+#credit{position:fixed;right:1.5vw;top:10vh;z-index:5;font-family:"Segoe UI",Roboto,Arial,sans-serif;font-size:clamp(11px,.9vw,14px);color:#fff;background:rgba(0,0,0,.55);padding:.25em .6em;border-radius:.2em;opacity:0;transition:opacity .4s}
+#credit.on{opacity:.9}
+#intro,#end{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
+ background:radial-gradient(ellipse at center,rgba(20,14,8,.55),rgba(0,0,0,.94));transition:opacity 1.2s}
+#intro.off{opacity:0;pointer-events:none}
+#intro h1{font-size:clamp(46px,8vw,128px);letter-spacing:.16em;font-weight:400}
+#intro h2{font-size:clamp(16px,1.8vw,28px);letter-spacing:.3em;color:#ffd79a;font-style:italic;margin:.4em 0 1.6em}
+#intro p{font-family:"Segoe UI",Roboto,Arial,sans-serif;max-width:760px;font-size:clamp(14px,1.25vw,19px);line-height:1.55;opacity:.85;margin:0 1em 2em}
+button{font-family:"Segoe UI",Roboto,Arial,sans-serif;font-size:clamp(17px,1.6vw,24px);letter-spacing:.24em;font-weight:700;padding:.95em 2.2em;
+ background:#c99a4a;color:#120c04;border:0;border-radius:.2em;cursor:pointer;box-shadow:0 0 40px rgba(201,154,74,.4)}
+button:disabled{opacity:.5;cursor:wait}
+#end{display:none;overflow:auto;justify-content:flex-start;padding:6vh 6vw;text-align:left;background:#0b0907}
+#end.on{display:flex}
+#end h3{font-size:clamp(28px,3vw,44px);letter-spacing:.2em;font-weight:400;margin-bottom:.6em;color:#ffd79a}
+#end ol{font-family:"Segoe UI",Roboto,Arial,sans-serif;font-size:clamp(14px,1.15vw,17px);line-height:1.6;max-width:1100px;padding-left:1.4em}
+#end a{color:#9fd0f0}
+#end .note{font-family:"Segoe UI",Roboto,Arial,sans-serif;max-width:1100px;margin:1.4em 0;font-size:clamp(13px,1.05vw,16px);opacity:.85;line-height:1.55}
+</style></head>
+<body>
+<canvas id="c"></canvas><div class="bar" id="bt"></div><div class="bar" id="bb"></div>
+<div id="cards"></div><div id="sub"></div><div id="credit"></div>
+<div id="intro">
+ <h1>EL PILAR</h1><h2>Memoria de piedra y bronce</h2>
+ <p>Documental 3D · 4 min · narración y subtítulos en español.<br>Reconstrucción 3D basada en documentación disponible. Activa el sonido; se recomienda pantalla completa.</p>
+ <button id="start" disabled>CARGANDO…</button>
+</div>
+<div id="end">
+ <h3>FUENTES</h3>
+ <ol>
+  <li>Catedrales de Zaragoza (Cabildo Metropolitano): <a href="https://catedraldezaragoza.es/basilica/la-imagen-de-la-virgen/" target="_blank">La Imagen de la Virgen</a> (36 cm, madera, primera mitad s. XV, Juan de la Huerta; columna de jaspe 1,70 m · Ø 24 cm, forrada de bronce y plata; días 2, 12 y 20 sin manto) · <a href="https://catedraldezaragoza.es/culto/mantos-y-coronas-de-la-virgen/" target="_blank">Mantos y coronas</a> (más de 450 mantos; medidas 40/140/80 cm; corona de 1905 de Ansorena) · <a href="https://catedraldezaragoza.es/culto/milagro-de-calanda/" target="_blank">Milagro de Calanda</a> (29/03/1640; sentencia 27/04/1641, arzobispo Pedro Apaolaza; 25 testigos) · <a href="https://catedraldezaragoza.es/basilica/la-santa-capilla/" target="_blank">La Santa Capilla</a> (camarín de mármol verde con 72 estrellas).</li>
+  <li>Ayuntamiento de Zaragoza: <a href="https://zaragoza.es/sede/portal/cultura/fiestas-pilar/clasicos/ofrenda-flores" target="_blank">La Ofrenda de Flores</a> — primera ofrenda el 12/10/1958, unas 2.000 personas, dos horas.</li>
+  <li>Zaragózala: <a href="https://zaragozala.com/curiosidades/pasar-ninos-manto-virgen-pilar/" target="_blank">Presentación de niños a la Virgen</a>; <a href="https://zaragozala.com/cultura/los-dias-que-la-virgen-del-pilar-no-lleva-manto/" target="_blank">Los días que la Virgen no lleva manto</a>.</li>
+  <li><b>Fotografías reales</b> (Wikimedia Commons; se muestran con relieve calculado por Depth Anything V2, sin alterar sus píxeles):<ul><li><a href="https://commons.wikimedia.org/wiki/File%3AZaragoza_-_Puente_de_Piedra_1.jpg" target="_blank">Zaragoza - Puente de Piedra 1.jpg</a> — Zarateman · CC0</li><li><a href="https://commons.wikimedia.org/wiki/File%3AT%C3%ADmpano_rom%C3%A1nico_de_El_Pilar.jpg" target="_blank">Tímpano románico de El Pilar.jpg</a> — Escarlati · CC BY-SA 3.0</li><li><a href="https://commons.wikimedia.org/wiki/File%3ABas%C3%ADlica_de_Nuestra_Se%C3%B1ora_del_Pilar%2C_interior.jpg" target="_blank">Basílica de Nuestra Señora del Pilar, interior.jpg</a> — José Luis Filpo Cabana · CC0</li><li><a href="https://commons.wikimedia.org/wiki/File%3APilar_Santa_Capilla_12.JPG" target="_blank">Pilar Santa Capilla 12.JPG</a> — Miguel Hermoso Cuesta · CC BY-SA 4.0</li><li><a href="https://commons.wikimedia.org/wiki/File%3A13_de_Mayo%2C_Virgen_del_Pilar_con_el_manto_de_la_Instituci%C3%B3n_%2852103197996%29.jpg" target="_blank">13 de Mayo, Virgen del Pilar con el manto de la Institución (52103197996).jpg</a> — El Justicia de Aragón · CC0</li><li><a href="https://commons.wikimedia.org/wiki/File%3AEscultura_de_la_Virgen_del_Pilar%2C_en_la_Bas%C3%ADlica_del_Pilar_de_Zaragoza%2C_Espa%C3%B1a%2C_Spain.jpg" target="_blank">Escultura de la Virgen del Pilar, en la Basílica del Pilar de Zaragoza, España, Spain.jpg</a> — CARLOS TEIXIDOR CADENAS · CC BY-SA 4.0</li><li><a href="https://commons.wikimedia.org/wiki/File%3ASanta_Capilla_de_la_Virgen_del_Pilar_de_Zaragoza_2.jpg" target="_blank">Santa Capilla de la Virgen del Pilar de Zaragoza 2.jpg</a> — Herrinsa · CC BY-SA 4.0</li><li><a href="https://commons.wikimedia.org/wiki/File%3ARetablo_Mayor_Pilar_Zaragoza_Damian_Forment.jpg" target="_blank">Retablo Mayor Pilar Zaragoza Damian Forment.jpg</a> — Danielhythloday · CC BY-SA 4.0</li><li><a href="https://commons.wikimedia.org/wiki/File%3AAdoration_of_the_Name_of_God%2C_Catedral-Bas%C3%ADlica_de_Nuestra_Se%C3%B1ora_del_Pilar%2C_Zaragoza%2C_August_2026.jpg" target="_blank">Adoration of the Name of God, Catedral-Basílica de Nuestra Señora del Pilar, Zaragoza, August 2026.jpg</a> — Kawon Kez Sel · CC0</li><li><a href="https://commons.wikimedia.org/wiki/File:Regina_Martyrum_por_Goya.jpg" target="_blank">Regina Martyrum por Goya.jpg</a> — Francisco de Goya (fotografía de la obra) · Dominio público</li><li><a href="https://commons.wikimedia.org/wiki/File%3ATorre_Nueva_%28Laurent%29_grande.jpg" target="_blank">Torre Nueva (Laurent) grande.jpg</a> — Jean Laurent · Public domain</li><li><a href="https://commons.wikimedia.org/wiki/File%3AZaragoza_-_El_Pilar_-_Cartel_bombas.jpg" target="_blank">Zaragoza - El Pilar - Cartel bombas.jpg</a> — Ecelan · CC BY-SA 4.0</li><li><a href="https://commons.wikimedia.org/wiki/File%3AZaragoza_-_Plaza_del_Pilar_-_Marca_de_la_ca%C3%ADda_de_la_bomba.jpg" target="_blank">Zaragoza - Plaza del Pilar - Marca de la caída de la bomba.jpg</a> — Ecelan · CC BY-SA 4.0</li><li><a href="https://commons.wikimedia.org/wiki/File%3AZaragoza_-_El_Pilar_-_B%C3%B3vedas_-_Agujero_Bomba_01.jpg" target="_blank">Zaragoza - El Pilar - Bóvedas - Agujero Bomba 01.jpg</a> — Ecelan · CC BY-SA 4.0</li><li><a href="https://commons.wikimedia.org/wiki/File%3AZaragoza_-_El_Pilar_2021_-_Ofrenda_de_flores_01.jpg" target="_blank">Zaragoza - El Pilar 2021 - Ofrenda de flores 01.jpg</a> — Ecelan · CC BY-SA 4.0</li><li><a href="https://commons.wikimedia.org/wiki/File%3AZaragoza_-_El_Pilar_2024_-_Ofrenda_de_Flores_01.jpg" target="_blank">Zaragoza - El Pilar 2024 - Ofrenda de Flores 01.jpg</a> — Ecelan · CC BY-SA 4.0</li><li><a href="https://commons.wikimedia.org/wiki/File%3AZaragoza_-_Puente_de_Piedra_3.jpg" target="_blank">Zaragoza - Puente de Piedra 3.jpg</a> — Zarateman · CC0</li><li><a href="https://commons.wikimedia.org/wiki/File%3AZaragoza_-_Puente_de_Piedra_4.jpg" target="_blank">Zaragoza - Puente de Piedra 4.jpg</a> — Zarateman · CC0</li><li><a href="https://commons.wikimedia.org/wiki/File%3AWLM_-_2021_-_Zaragoza_-_01.jpg" target="_blank">WLM - 2021 - Zaragoza - 01.jpg</a> — Moahim · CC BY-SA 4.0</li></ul></li>
+  <li>Wikipedia (es): <a href="https://es.wikipedia.org/wiki/Puente_de_Piedra_(Zaragoza)" target="_blank">Puente de Piedra (Zaragoza)</a> — 7 ojos, 225 m, 1401–1440 (Gil de Menestral), riada de 1643, reparación de 1659, leones de bronce de Francisco Rallo (1991).</li>
+  <li>Planos de la ciudad: <a href="https://www.openstreetmap.org/copyright" target="_blank">© colaboradores de OpenStreetMap</a> (licencia ODbL) — plantas y alturas de 2.636 edificios, el Ebro, los puentes, La Seo, la Lonja, el Ayuntamiento y el contorno real de la basílica (131 × 69 m).</li>
+  <li>Campaners de la Catedral de València (F. Llop i Bayo, M. C. Álvaro Muñoz): <a href="https://campaners.com/php/catedral.php?numer=545" target="_blank">Inventario de campanas · Catedral de Nuestra Señora del Pilar</a> — número, nombres, fundidores, años, diámetros y pesos de las campanas; Campana de los Sitios; inscripción «José Azuara Campanero»; el campanero Simeón Millán; electrificaciones (1964, 1971) y restauración (2008); jaculatoria por megafonía; palomas en las torres.</li>
+  <li>Campaners de la Catedral de València: <a href="https://campaners.com/php/torrepdf.php?numer=2856" target="_blank">Torre Nueva · Zaragoza</a> — traslado de sus campanas al Pilar.</li>
+  <li>Patrimonio Cultural de Aragón (Gobierno de Aragón): <a href="https://patrimonioculturaldearagon.es/patrimonio/basilica-de-nuestra-senora-del-pilar/" target="_blank">Basílica de Nuestra Señora del Pilar</a> — templo románico, incendio de 1434, gótico-mudéjar (h. 1515), obras desde 1681, Santa Capilla 1750–1765, retablo de Forment 1509–1518, restauraciones.</li>
+  <li>Ayuntamiento de Zaragoza · Turismo: <a href="https://www.zaragoza.es/sede/portal/turismo/post/basilica-del-pilar?locale=es" target="_blank">Basílica del Pilar</a> — Felipe Sánchez, Herrera el Mozo, Ventura Rodríguez desde 1750.</li>
+  <li>Fundación Goya en Aragón: <a href="https://fundaciongoyaenaragon.es/eng/obra/regina-martyrum/621" target="_blank">Regina Martyrum</a> · Universidad de Zaragoza, InfoGoya: <a href="https://goya.unizar.es/InfoGoya/Life/Cronologia.html" target="_blank">Cronología</a> — coreto (1772), Regina Martyrum (1780–28/05/1781), conflicto con Bayeu.</li>
+  <li>Aragón Digital (08/10/2025): <a href="https://www.aragondigital.es/articulo/zaragoza/historia-cuatro-torres-basilica-pilar-zaragoza-nombres-todas/20251008094218944257.html" target="_blank">Historia y nombres de las cuatro torres</a> — torres de 1903–1906/07 (Magdalena, Yarza) y 1949–1961 (Urzaiz, Leonor Sala).</li>
+  <li>Virtual Spanish Civil War Museum (VSCW): <a href="https://vscw.ca/en/node/626" target="_blank">The Bombing of the Temple of El Pilar, 3 August 1936</a> — cuatro bombas Hispana A-6 de 50 kg, hipótesis de sabotaje, bombas expuestas.</li>
+  <li>Zaragózala: <a href="https://zaragozala.com/curiosidades/bombas-pilar-1936-ataque-no-exploto/" target="_blank">Bombas del Pilar 1936</a> — versión de tres bombas; ninguna explotó; explicaciones técnicas.</li>
+  <li>Wikipedia (es): <a href="https://es.wikipedia.org/wiki/Catedral-Bas%C3%ADlica_de_Nuestra_Se%C3%B1ora_del_Pilar_de_Zaragoza" target="_blank">Catedral-Basílica de Nuestra Señora del Pilar</a> — 130 × 67 m, once cúpulas, tradición del 2 de enero del año 40; bombas junto a la Santa Capilla.</li>
+  <li>Soy de Zaragoza: <a href="https://www.soydezaragoza.es/torre-nueva-zaragoza" target="_blank">Torre Nueva de Zaragoza</a> — construcción 1504, inclinación, uso como torre de vigilancia en la Guerra de la Independencia.</li>
+  <li>Fotografías de referencia (Wikimedia Commons): «Zaragoza Rio Ebro and Catedral-Basílica del Pilar upstream from Puente de Piedra» (Ymblanter, CC BY-SA 4.0); «Zaragoza Pilar 2019 - domes» (Fernando, CC BY-SA 4.0); «Catedral-Basílica de Nuestra Señora del Pilar, Zaragoza, August 2026» (CC0); «Zaragoza - Plaza del Pilar, fachada sur de la Basílica 1» (Zarateman, CC0). Usadas solo como referencia de modelado.</li>
+  <li>Imagen integrada: «Regina Martyrum por Goya» (Wikimedia Commons, dominio público), proyectada en la cúpula reconstruida.</li>
+  <li>Texturas (v2): <a href="https://polyhaven.com" target="_blank">Poly Haven</a>, licencia CC0 — brown_brick_02, sandstone_blocks_08, clay_roof_tiles_02, granite_tile, marble_01, beige_wall_001. Materiales genéricos que aproximan los reales; no son fotografías del Pilar.</li>
+ </ol>
+ <div class="note"><b>Notas de rigor.</b> Interior, Virgen, retablo, frescos, tímpano, Torre Nueva, bombas y Ofrenda: fotografías reales. Basílica y Puente de Piedra: modelos 3D propios sobre su planta real (OpenStreetMap) y fotografías; el reparto exacto de las luces del puente y los detalles ornamentales son aproximados. Ciudad: volúmenes reales de OpenStreetMap con fachadas genéricas. Campanas: diámetros reales; sonido sintetizado según su tamaño (no son grabaciones). Las fuentes discrepan en el número de bombas de 1936 (la placa del templo dice tres; otras fuentes, cuatro) y en la causa de que no estallaran. Música y efectos: originales, sintetizados en tiempo real. Voz: XTTS v2 (licencia CPML, uso no comercial), verificada frase a frase con Whisper.</div>
+ <div><button id="again">VOLVER A VER</button></div>
+</div>
+<script>window.__TL=__TL__;window.__GLB="__GLB__";window.__VO="__VO__";window.__FRESCO="__FRESCO__";window.__TEX=__TEX__;window.__CITY=__CITY__;window.__PHOTOS=__PHOTOS__;window.__PUENTE="__PUENTE__";window.__LION="__LION__";</script>
+<script>__BUNDLE__</script>
+</body></html>

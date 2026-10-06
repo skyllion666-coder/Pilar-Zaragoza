@@ -16,7 +16,7 @@ tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to("cpu")
 asr = WhisperModel("small", device="cpu", compute_type="int8")
 
 from num2words import num2words
-PRON = {"Bayeu": "Bayéu", "Regina Martyrum": "Regina Mártirum", "Herrera el Mozo": "Herrera, el Mozo", "Juan de la Huerta": "Juan de la Huerta,", "Pellicer": "Pellicér"}
+PRON = {"Menestral": "Menestrál", "Ansorena": "Ansoréna", "Bayeu": "Bayéu", "Regina Martyrum": "Regina Mártirum", "Herrera el Mozo": "Herrera, el Mozo", "Juan de la Huerta": "Juan de la Huerta,", "Pellicer": "Pellicér"}
 def norm(s):
     s = re.sub(r"(\d)\.(\d{3})", r"\1\2", s)
     s = re.sub(r"\d+", lambda m: " " + num2words(int(m.group()), lang="es") + " ", s)
@@ -53,7 +53,7 @@ for sid, i, text in lines:
         print(f"{sid}_{i} existing score={sc0:.3f} :: {hyp0[:90]}", flush=True)
         best = (sc0, d0)
     for attempt in range(5 if best is None or best[0] < 0.95 else 0):
-        torch.manual_seed(1234 + attempt * 77)
+        torch.manual_seed(int(os.environ.get('SEED', '0')) + 1234 + attempt * 77)
         tts.tts_to_file(text=say, speaker=SPK, language="es", file_path=fn + ".tmp.wav", speed=float(os.environ.get("SPEED","1.0")),
                         temperature=0.6, repetition_penalty=5.0, enable_text_splitting=True)
         score, hyp = check(fn + ".tmp.wav", text)

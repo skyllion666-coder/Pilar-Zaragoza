@@ -1,15 +1,8 @@
 # El Pilar · Memoria de piedra y bronce
 
-Documental 3D cinematográfico (2:58) sobre la Basílica-Catedral de Nuestra Señora del Pilar de Zaragoza.
+Documental cinematográfico (4:42) sobre la Basílica-Catedral de Nuestra Señora del Pilar de Zaragoza.
 
-**Ver:** descarga uno de los HTML y ábrelo en Chrome o Firefox (archivo único, funciona sin conexión), activa el sonido y pulsa **INICIAR DOCUMENTAL**.
-
-| Versión | Archivo | Novedades |
-|---|---|---|
-| v1 | `Pilar_3D_Documental.html` | Versión original (2:58), voz Piper |
-| v2 | `Pilar_3D_Documental_v2.html` | Texturas reales CC0 (Poly Haven), oclusión ambiental, nubes, arcos y remates en las torres, modelo comprimido |
-| v3 | `Pilar_3D_Documental_v3.html` | (2:52) Voz XTTS v2 verificada frase a frase con Whisper, Ebro con reflejos, destellos, palomas, gente en la plaza, velas y rótulos nuevos |
-| **v4** | `Pilar_3D_Documental_v4.html` | **Recomendada (2:53).** La Virgen del Pilar (imagen, columna, mantos, días sin manto, Milagro de Calanda, Ofrenda de Flores), fotografía real de la Virgen, ciudad real de OpenStreetMap (2.636 edificios, Ebro, puentes) y colores de fachada corregidos |
+**Ver:** https://skyllion666-coder.github.io/Pilar-Zaragoza/ — o descarga `Pilar_3D_Documental.html` y ábrelo en Chrome o Firefox (archivo único, funciona sin conexión), activa el sonido y pulsa **INICIAR DOCUMENTAL**.
 
 ## Contenido
 - Reconstrucción 3D del Pilar generada con Blender (`build_pilar.py`) a partir de fotografías y documentación publicada.

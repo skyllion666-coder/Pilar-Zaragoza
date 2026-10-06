@@ -26,3 +26,13 @@ v4/*
 !v4/city.json
 !v4/virgin.jpg
 !v4/osm_lib.py
+v5/*
+!v5/vo.mp3
+!v5/vo.json
+!v5/timeline.json
+!v5/puente.glb
+!v5/lion.png
+!v5/photos/
+!v5/ref/
+v5/ref/*.jpg
+!v5/ref/credits.json

@@ -1,0 +1,229 @@
+{
+ "scenes": {
+  "intro": 5.5,
+  "ebro": 5.8,
+  "rewind": 34.47,
+  "capilla": 70.85,
+  "virgen": 77.69,
+  "arte": 128.83,
+  "bells": 155.67,
+  "sitios": 187.51,
+  "bombs": 214.62,
+  "azuara": 242.85,
+  "ofrenda": 261.43,
+  "outro": 274.11
+ },
+ "cues": [
+  {
+   "s": 5.8,
+   "e": 10.91,
+   "text": "Zaragoza. A orillas del Ebro, un templo que tardó casi tres siglos en terminarse.",
+   "scene": "ebro"
+  },
+  {
+   "s": 11.36,
+   "e": 21.84,
+   "text": "Frente a él, el Puente de Piedra, de siete ojos, levantado entre mil cuatrocientos uno y mil cuatrocientos cuarenta. Una riada se llevó dos de sus arcos en mil seiscientos cuarenta y tres.",
+   "scene": "ebro"
+  },
+  {
+   "s": 22.29,
+   "e": 26.91,
+   "text": "Desde mil novecientos noventa y uno lo guardan cuatro leones de bronce, obra de Francisco Rallo.",
+   "scene": "ebro"
+  },
+  {
+   "s": 27.36,
+   "e": 33.22,
+   "text": "Y dentro del templo, una columna de jaspe que, según la tradición, la Virgen dejó al apóstol Santiago en el año cuarenta.",
+   "scene": "ebro"
+  },
+  {
+   "s": 34.47,
+   "e": 36.15,
+   "text": "Volvamos atrás en el tiempo.",
+   "scene": "rewind"
+  },
+  {
+   "s": 36.6,
+   "e": 43.39,
+   "text": "Las torres del río son de mil novecientos sesenta y uno. La de la plaza, junto al Ayuntamiento, de mil novecientos siete.",
+   "scene": "rewind"
+  },
+  {
+   "s": 43.84,
+   "e": 50.14,
+   "text": "El templo barroco se empezó en mil seiscientos ochenta y uno, con trazas de Felipe Sánchez revisadas por Herrera el Mozo.",
+   "scene": "rewind"
+  },
+  {
+   "s": 50.59,
+   "e": 60.52,
+   "text": "Antes hubo un templo gótico mudéjar, terminado hacia mil quinientos quince. Y antes, uno románico, que un incendio arrasó en mil cuatrocientos treinta y cuatro.",
+   "scene": "rewind"
+  },
+  {
+   "s": 60.97,
+   "e": 66.9,
+   "text": "De aquel templo románico se conserva una sola piedra: este tímpano con crismón, hoy en el muro sur del templo.",
+   "scene": "rewind"
+  },
+  {
+   "s": 70.85,
+   "e": 76.64,
+   "text": "Desde mil setecientos cincuenta, Ventura Rodríguez diseña la Santa Capilla: un templete oval que guarda la columna.",
+   "scene": "capilla"
+  },
+  {
+   "s": 77.69,
+   "e": 81.63,
+   "text": "Y en su interior, la razón de todo este templo: la Virgen del Pilar.",
+   "scene": "virgen"
+  },
+  {
+   "s": 82.08,
+   "e": 88.64,
+   "text": "Es una talla de madera de solo treinta y seis centímetros, de la primera mitad del siglo quince, atribuida a Juan de la Huerta.",
+   "scene": "virgen"
+  },
+  {
+   "s": 89.09,
+   "e": 93.94,
+   "text": "Se alza sobre la columna de jaspe: un metro setenta, forrada de bronce y plata.",
+   "scene": "virgen"
+  },
+  {
+   "s": 94.39,
+   "e": 103.33,
+   "text": "Cada día viste un manto distinto. Tiene más de cuatrocientos cincuenta mantos, pero los días dos, doce y veinte de cada mes aparece sin manto, y se ve la columna.",
+   "scene": "virgen"
+  },
+  {
+   "s": 103.78,
+   "e": 110.34,
+   "text": "La corona de su coronación, en mil novecientos cinco, la hicieron treinta y tres artesanos de la casa Ansorena, en cuarenta y cuatro días.",
+   "scene": "virgen"
+  },
+  {
+   "s": 110.79,
+   "e": 116.47,
+   "text": "Y cada día, niños de hasta diez años son presentados ante ella en el camarín, una costumbre que pasa de padres a hijos.",
+   "scene": "virgen"
+  },
+  {
+   "s": 116.92,
+   "e": 127.58,
+   "text": "En mil seiscientos cuarenta, un joven de Calanda, Miguel Juan Pellicer, aseguró haber recuperado la pierna que le habían amputado. La sentencia del arzobispo, en mil seiscientos cuarenta y uno, lo declaró milagro.",
+   "scene": "virgen"
+  },
+  {
+   "s": 128.83,
+   "e": 136.83,
+   "text": "En el altar mayor, el retablo de alabastro de Damián Forment, esculpido entre mil quinientos nueve y mil quinientos dieciocho: más antiguo que el propio templo.",
+   "scene": "arte"
+  },
+  {
+   "s": 137.28,
+   "e": 144.15,
+   "text": "Sobre las bóvedas pintó un joven Goya. En mil setecientos setenta y dos, la Adoración del Nombre de Dios, en el coreto.",
+   "scene": "arte"
+  },
+  {
+   "s": 144.6,
+   "e": 154.22,
+   "text": "Después, la cúpula Regina Martyrum. Su estilo chocó con el de su cuñado, Francisco Bayeu. Goya la terminó en mayo de mil setecientos ochenta y uno, y se marchó dolido.",
+   "scene": "arte"
+  },
+  {
+   "s": 155.67,
+   "e": 160.1,
+   "text": "¿Cuántas campanas tiene el Pilar? Las cifras publicadas no coinciden.",
+   "scene": "bells"
+  },
+  {
+   "s": 160.55,
+   "e": 167.78,
+   "text": "El inventario de los Campaneros de la Catedral de Valencia cuenta quince, en dos torres. Y una más, de señales, en el interior.",
+   "scene": "bells"
+  },
+  {
+   "s": 168.23,
+   "e": 175.34,
+   "text": "La mayor de las litúrgicas es la Pilara. Mil ochocientos sesenta y seis. Dos mil ciento setenta kilos.",
+   "scene": "bells"
+  },
+  {
+   "s": 175.79,
+   "e": 180.86,
+   "text": "Muy cerca cuelga una campana inglesa, fundida en Londres en mil setecientos sesenta y cuatro.",
+   "scene": "bells"
+  },
+  {
+   "s": 187.51,
+   "e": 194.48,
+   "text": "Pero la gran voz está en la otra torre. Es la Campana de los Sitios, fundida en mil setecientos once, con más de seis mil kilos.",
+   "scene": "sitios"
+  },
+  {
+   "s": 194.93,
+   "e": 205.04,
+   "text": "Colgaba de la Torre Nueva, la torre inclinada de Zaragoza, atalaya en la Guerra de la Independencia. Por su papel en aquella guerra, dejó de llamarse el Relox y pasó a ser la Campana de los Sitios.",
+   "scene": "sitios"
+  },
+  {
+   "s": 205.49,
+   "e": 209.57,
+   "text": "Derribada la Torre Nueva en mil ochocientos noventa y dos, su campana pasó al Pilar.",
+   "scene": "sitios"
+  },
+  {
+   "s": 214.62,
+   "e": 219.5,
+   "text": "Tres de agosto de mil novecientos treinta y seis. De madrugada, un avión bombardea el templo.",
+   "scene": "bombs"
+  },
+  {
+   "s": 219.95,
+   "e": 230.41,
+   "text": "La placa del propio templo habla de tres bombas; otras fuentes, de cuatro. Una se clavó en la plaza, donde aún hay una marca. Otras atravesaron la cubierta. Ninguna explotó.",
+   "scene": "bombs"
+  },
+  {
+   "s": 230.86,
+   "e": 237.53,
+   "text": "La tradición lo llamó milagro. Estudios posteriores apuntan a fallos de las espoletas, o a un sabotaje.",
+   "scene": "bombs"
+  },
+  {
+   "s": 237.98,
+   "e": 241.6,
+   "text": "Dos de ellas cuelgan hoy de un pilar, junto a la Santa Capilla.",
+   "scene": "bombs"
+  },
+  {
+   "s": 242.85,
+   "e": 249.81,
+   "text": "En la escalera que sube a las campanas, alguien escribió con letras enormes, quizá a finales del siglo dieciocho: José Azuara, campanero.",
+   "scene": "azuara"
+  },
+  {
+   "s": 250.26,
+   "e": 260.18,
+   "text": "El último campanero, el tío Simeón Millán, tocó a mano durante buena parte del siglo veinte. Poco después de su muerte, hacia mil novecientos sesenta y cuatro, las campanas se electrificaron.",
+   "scene": "azuara"
+  },
+  {
+   "s": 261.43,
+   "e": 268.07,
+   "text": "Y cada doce de octubre, desde mil novecientos cincuenta y ocho, la plaza se cubre de flores para ella. Es la Ofrenda.",
+   "scene": "ofrenda"
+  },
+  {
+   "s": 268.52,
+   "e": 273.36,
+   "text": "Las campanas cambian. Los campaneros pasan. El sonido se queda.",
+   "scene": "ofrenda"
+  }
+ ],
+ "total": 282.11
+}
