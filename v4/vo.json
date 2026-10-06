@@ -1,0 +1,194 @@
+[
+ {
+  "scene": "ebro",
+  "i": 0,
+  "text": "Zaragoza. A orillas del Ebro, un templo que tardó casi tres siglos en terminarse.",
+  "dur": 4.83,
+  "file": "v4/vo/ebro_0.wav",
+  "score": 1.0
+ },
+ {
+  "scene": "ebro",
+  "i": 1,
+  "text": "Dentro guarda una columna de jaspe que, según la tradición, la Virgen dejó al apóstol Santiago en el año cuarenta.",
+  "dur": 5.37,
+  "file": "v4/vo/ebro_1.wav",
+  "score": 1.0
+ },
+ {
+  "scene": "rewind",
+  "i": 0,
+  "text": "Volvamos atrás en el tiempo.",
+  "dur": 1.35,
+  "file": "v4/vo/rewind_0.wav",
+  "score": 1.0
+ },
+ {
+  "scene": "rewind",
+  "i": 1,
+  "text": "Las torres del río son de mil novecientos sesenta y uno. La de la plaza, junto al Ayuntamiento, de mil novecientos siete.",
+  "dur": 6.41,
+  "file": "v4/vo/rewind_1.wav",
+  "score": 1.0
+ },
+ {
+  "scene": "rewind",
+  "i": 2,
+  "text": "El templo barroco se empezó en mil seiscientos ochenta y uno.",
+  "dur": 2.37,
+  "file": "v4/vo/rewind_2.wav",
+  "score": 1.0
+ },
+ {
+  "scene": "rewind",
+  "i": 3,
+  "text": "Antes hubo un templo gótico mudéjar. Y antes, uno románico, que un incendio arrasó en mil cuatrocientos treinta y cuatro.",
+  "dur": 6.59,
+  "file": "v4/vo/rewind_3.wav",
+  "score": 0.991
+ },
+ {
+  "scene": "capilla",
+  "i": 0,
+  "text": "Desde mil setecientos cincuenta, Ventura Rodríguez diseña la Santa Capilla: un templete oval que guarda la columna.",
+  "dur": 5.55,
+  "file": "v4/vo/capilla_0.wav",
+  "score": 1.0
+ },
+ {
+  "scene": "virgen",
+  "i": 0,
+  "text": "Y en su interior, la razón de todo este templo: la Virgen del Pilar.",
+  "dur": 3.67,
+  "file": "v4/vo/virgen_0.wav",
+  "score": 1.0
+ },
+ {
+  "scene": "virgen",
+  "i": 1,
+  "text": "Es una talla de madera de solo treinta y seis centímetros, de principios del siglo quince, atribuida a Juan de la Huerta.",
+  "dur": 6.13,
+  "file": "v4/vo/virgen_1.wav",
+  "score": 0.965
+ },
+ {
+  "scene": "virgen",
+  "i": 2,
+  "text": "Se alza sobre la columna de jaspe: un metro setenta, forrada de bronce y plata.",
+  "dur": 4.51,
+  "file": "v4/vo/virgen_2.wav",
+  "score": 1.0
+ },
+ {
+  "scene": "virgen",
+  "i": 3,
+  "text": "Cada día viste un manto distinto. Tiene más de cuatrocientos cincuenta mantos, pero los días dos, doce y veinte de cada mes aparece sin manto, y se ve la columna.",
+  "dur": 8.69,
+  "file": "v4/vo/virgen_3.wav",
+  "score": 1.0
+ },
+ {
+  "scene": "virgen",
+  "i": 4,
+  "text": "En mil seiscientos cuarenta, un joven de Calanda, Miguel Juan Pellicer, aseguró haber recuperado la pierna que le habían amputado. La sentencia del arzobispo, en mil seiscientos cuarenta y uno, lo declaró milagro.",
+  "dur": 10.43,
+  "file": "v4/vo/virgen_4.wav",
+  "score": 0.995
+ },
+ {
+  "scene": "goya",
+  "i": 0,
+  "text": "Sobre las bóvedas pintó un joven Goya. Su cúpula, Regina Martyrum, la terminó en mil setecientos ochenta y uno.",
+  "dur": 6.44,
+  "file": "v4/vo/goya_0.wav",
+  "score": 0.986
+ },
+ {
+  "scene": "bells",
+  "i": 0,
+  "text": "¿Cuántas campanas tiene el Pilar? Las cifras publicadas no coinciden.",
+  "dur": 4.19,
+  "file": "v4/vo/bells_0.wav",
+  "score": 0.985
+ },
+ {
+  "scene": "bells",
+  "i": 1,
+  "text": "El inventario de los Campaneros de la Catedral de Valencia cuenta quince, en dos torres. Y una más, de señales, en el interior.",
+  "dur": 6.81,
+  "file": "v4/vo/bells_1.wav",
+  "score": 0.971
+ },
+ {
+  "scene": "bells",
+  "i": 2,
+  "text": "La mayor de las litúrgicas es la Pilara. Mil ochocientos sesenta y seis. Dos mil ciento setenta kilos.",
+  "dur": 6.55,
+  "file": "v4/vo/bells_2.wav",
+  "score": 1.0
+ },
+ {
+  "scene": "sitios",
+  "i": 0,
+  "text": "Pero la gran voz está en la otra torre: la Campana de los Sitios. Mil setecientos once. Más de seis mil kilos.",
+  "dur": 6.31,
+  "file": "v4/vo/sitios_0.wav",
+  "score": 1.0
+ },
+ {
+  "scene": "sitios",
+  "i": 1,
+  "text": "Colgaba de la Torre Nueva, la torre inclinada de Zaragoza, atalaya en la Guerra de la Independencia.",
+  "dur": 4.87,
+  "file": "v4/vo/sitios_1.wav",
+  "score": 0.995
+ },
+ {
+  "scene": "sitios",
+  "i": 2,
+  "text": "Derribada la Torre Nueva en mil ochocientos noventa y dos, su campana pasó al Pilar.",
+  "dur": 3.77,
+  "file": "v4/vo/sitios_2.wav",
+  "score": 1.0
+ },
+ {
+  "scene": "bombs",
+  "i": 0,
+  "text": "Tres de agosto de mil novecientos treinta y seis. De madrugada, un avión bombardea el templo.",
+  "dur": 4.9,
+  "file": "v4/vo/bombs_0.wav",
+  "score": 1.0
+ },
+ {
+  "scene": "bombs",
+  "i": 1,
+  "text": "Las fuentes no coinciden: tres o cuatro bombas. Una se clava en la plaza. Otras atraviesan la cubierta. Ninguna explota.",
+  "dur": 8.47,
+  "file": "v4/vo/bombs_1.wav",
+  "score": 1.0
+ },
+ {
+  "scene": "bombs",
+  "i": 2,
+  "text": "Dos de ellas cuelgan hoy de un pilar, junto a la Santa Capilla.",
+  "dur": 3.37,
+  "file": "v4/vo/bombs_2.wav",
+  "score": 1.0
+ },
+ {
+  "scene": "azuara",
+  "i": 0,
+  "text": "En la escalera de la torre, alguien escribió con letras enormes: José Azuara, campanero.",
+  "dur": 4.61,
+  "file": "v4/vo/azuara_0.wav",
+  "score": 1.0
+ },
+ {
+  "scene": "azuara",
+  "i": 1,
+  "text": "Las campanas cambian. Los campaneros pasan. El sonido se queda.",
+  "dur": 4.53,
+  "file": "v4/vo/azuara_1.wav",
+  "score": 1.0
+ }
+]

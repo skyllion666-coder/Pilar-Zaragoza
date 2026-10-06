@@ -151,9 +151,15 @@ export class Audio {
     A(rb0, w => this.whoosh(w, rb1 - rb0, 0.18));
     A(rb1, w => { this.pad(w, 4, 'Dmaj', 0.12); this.boom(w, 0.5); });
     // CAPILLA: pasos, coro
-    for (let t = S.capilla + 3.2; t < cue('capilla', 1).s; t += 0.62) A(t, w => this.noiseHit(w, 700, 1.5, 0.08, 0.07, 'lowpass'));
+    for (let t = S.capilla + 3.2; t < S.virgen - 0.5; t += 0.62) A(t, w => this.noiseHit(w, 700, 1.5, 0.08, 0.07, 'lowpass'));
     A(S.capilla, w => this.drone(w, S.bells - S.capilla, N.D2, 0.08, 260));
     ['Dm', 'Gm', 'Bb', 'A', 'Dm', 'F', 'C', 'A', 'Dm'].forEach((c, i) => A(S.capilla + 2 + i * 3.3, w => this.pad(w, 3.8, c, 0.07)));
+    // LA VIRGEN: el coro se abre en mayor; campanillas suaves; silencio respetuoso en «sin manto»
+    A(S.virgen - 0.3, w => { this.pad(w, 6, 'Dmaj', 0.11); this.bell(w + 0.4, 0.52, 0.25, 0.3); });
+    ['F', 'C', 'Dm', 'Bb', 'F', 'C', 'A', 'Dmaj'].forEach((c, i) => A(S.virgen + 5.5 + i * 3.6, w => this.pad(w, 4.0, c, 0.065)));
+    A(at('virgen', 3, 'Tiene') - 0.3, w => this.whoosh(w, 3.5, 0.18));
+    A(at('virgen', 3, 'pero los') + 0.6, w => { this.bell(w, 0.62, 0.3, -0.2); this.noiseHit(w, 5200, 4, 0.04, 1.8, 'bandpass', 2400, 0.4); });
+    melody(cue('virgen', 4).s + 0.5, 0.95, [['D4', 2], ['F4', 1], ['A4', 2], ['G4', 1], ['F4', 2], ['E4', 1], ['D4', 3]], 0.07);
     // CAMPANAS: inventario (cada campana suena una vez, de aguda a grave)
     A(S.bells - 1.3, w => this.whoosh(w, 2.2, 0.25));
     A(S.bells - 1, w => this.wind(w, S.sitios - S.bells + 4, 0.15, 700));

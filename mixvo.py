@@ -1,5 +1,5 @@
 import json, wave, numpy as np, subprocess, sys
-sys.path.insert(0,'.'); from script import SCENES
+sys.path.insert(0,'.'); import importlib, os; SCENES=importlib.import_module(os.environ.get('SCRIPT','script')).SCENES
 import os
 V=os.environ.get('VO','build'); vo=json.load(open(V+'/vo.json')); SR=int(os.environ.get('SR','22050'))
 GAP=float(os.environ.get('GAP','0.45')); t=0.0; track=[]; cues=[]; scenes={}

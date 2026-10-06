@@ -19,3 +19,10 @@ v3/*
 !v3/vo.mp3
 !v3/vo.json
 !v3/timeline.json
+v4/*
+!v4/vo.mp3
+!v4/vo.json
+!v4/timeline.json
+!v4/city.json
+!v4/virgin.jpg
+!v4/osm_lib.py

@@ -1,0 +1,162 @@
+{
+ "scenes": {
+  "intro": 5.5,
+  "ebro": 5.8,
+  "rewind": 17.6,
+  "capilla": 40.42,
+  "virgen": 46.97,
+  "goya": 83.0,
+  "bells": 90.84,
+  "sitios": 115.79,
+  "bombs": 136.54,
+  "azuara": 155.08,
+  "outro": 165.32
+ },
+ "cues": [
+  {
+   "s": 5.8,
+   "e": 10.63,
+   "text": "Zaragoza. A orillas del Ebro, un templo que tardó casi tres siglos en terminarse.",
+   "scene": "ebro"
+  },
+  {
+   "s": 11.03,
+   "e": 16.4,
+   "text": "Dentro guarda una columna de jaspe que, según la tradición, la Virgen dejó al apóstol Santiago en el año cuarenta.",
+   "scene": "ebro"
+  },
+  {
+   "s": 17.6,
+   "e": 18.95,
+   "text": "Volvamos atrás en el tiempo.",
+   "scene": "rewind"
+  },
+  {
+   "s": 19.35,
+   "e": 25.76,
+   "text": "Las torres del río son de mil novecientos sesenta y uno. La de la plaza, junto al Ayuntamiento, de mil novecientos siete.",
+   "scene": "rewind"
+  },
+  {
+   "s": 26.16,
+   "e": 28.53,
+   "text": "El templo barroco se empezó en mil seiscientos ochenta y uno.",
+   "scene": "rewind"
+  },
+  {
+   "s": 28.93,
+   "e": 35.52,
+   "text": "Antes hubo un templo gótico mudéjar. Y antes, uno románico, que un incendio arrasó en mil cuatrocientos treinta y cuatro.",
+   "scene": "rewind"
+  },
+  {
+   "s": 40.42,
+   "e": 45.97,
+   "text": "Desde mil setecientos cincuenta, Ventura Rodríguez diseña la Santa Capilla: un templete oval que guarda la columna.",
+   "scene": "capilla"
+  },
+  {
+   "s": 46.97,
+   "e": 50.64,
+   "text": "Y en su interior, la razón de todo este templo: la Virgen del Pilar.",
+   "scene": "virgen"
+  },
+  {
+   "s": 51.04,
+   "e": 57.17,
+   "text": "Es una talla de madera de solo treinta y seis centímetros, de principios del siglo quince, atribuida a Juan de la Huerta.",
+   "scene": "virgen"
+  },
+  {
+   "s": 57.57,
+   "e": 62.08,
+   "text": "Se alza sobre la columna de jaspe: un metro setenta, forrada de bronce y plata.",
+   "scene": "virgen"
+  },
+  {
+   "s": 62.48,
+   "e": 71.17,
+   "text": "Cada día viste un manto distinto. Tiene más de cuatrocientos cincuenta mantos, pero los días dos, doce y veinte de cada mes aparece sin manto, y se ve la columna.",
+   "scene": "virgen"
+  },
+  {
+   "s": 71.57,
+   "e": 82.0,
+   "text": "En mil seiscientos cuarenta, un joven de Calanda, Miguel Juan Pellicer, aseguró haber recuperado la pierna que le habían amputado. La sentencia del arzobispo, en mil seiscientos cuarenta y uno, lo declaró milagro.",
+   "scene": "virgen"
+  },
+  {
+   "s": 83.0,
+   "e": 89.44,
+   "text": "Sobre las bóvedas pintó un joven Goya. Su cúpula, Regina Martyrum, la terminó en mil setecientos ochenta y uno.",
+   "scene": "goya"
+  },
+  {
+   "s": 90.84,
+   "e": 95.03,
+   "text": "¿Cuántas campanas tiene el Pilar? Las cifras publicadas no coinciden.",
+   "scene": "bells"
+  },
+  {
+   "s": 95.43,
+   "e": 102.24,
+   "text": "El inventario de los Campaneros de la Catedral de Valencia cuenta quince, en dos torres. Y una más, de señales, en el interior.",
+   "scene": "bells"
+  },
+  {
+   "s": 102.64,
+   "e": 109.19,
+   "text": "La mayor de las litúrgicas es la Pilara. Mil ochocientos sesenta y seis. Dos mil ciento setenta kilos.",
+   "scene": "bells"
+  },
+  {
+   "s": 115.79,
+   "e": 122.1,
+   "text": "Pero la gran voz está en la otra torre: la Campana de los Sitios. Mil setecientos once. Más de seis mil kilos.",
+   "scene": "sitios"
+  },
+  {
+   "s": 122.5,
+   "e": 127.37,
+   "text": "Colgaba de la Torre Nueva, la torre inclinada de Zaragoza, atalaya en la Guerra de la Independencia.",
+   "scene": "sitios"
+  },
+  {
+   "s": 127.77,
+   "e": 131.54,
+   "text": "Derribada la Torre Nueva en mil ochocientos noventa y dos, su campana pasó al Pilar.",
+   "scene": "sitios"
+  },
+  {
+   "s": 136.54,
+   "e": 141.44,
+   "text": "Tres de agosto de mil novecientos treinta y seis. De madrugada, un avión bombardea el templo.",
+   "scene": "bombs"
+  },
+  {
+   "s": 141.84,
+   "e": 150.31,
+   "text": "Las fuentes no coinciden: tres o cuatro bombas. Una se clava en la plaza. Otras atraviesan la cubierta. Ninguna explota.",
+   "scene": "bombs"
+  },
+  {
+   "s": 150.71,
+   "e": 154.08,
+   "text": "Dos de ellas cuelgan hoy de un pilar, junto a la Santa Capilla.",
+   "scene": "bombs"
+  },
+  {
+   "s": 155.08,
+   "e": 159.69,
+   "text": "En la escalera de la torre, alguien escribió con letras enormes: José Azuara, campanero.",
+   "scene": "azuara"
+  },
+  {
+   "s": 160.09,
+   "e": 164.62,
+   "text": "Las campanas cambian. Los campaneros pasan. El sonido se queda.",
+   "scene": "azuara"
+  }
+ ],
+ "total": 172.82
+}

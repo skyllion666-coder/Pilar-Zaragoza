@@ -8,7 +8,8 @@ Documental 3D cinematográfico (2:58) sobre la Basílica-Catedral de Nuestra Se�
 |---|---|---|
 | v1 | `Pilar_3D_Documental.html` | Versión original (2:58), voz Piper |
 | v2 | `Pilar_3D_Documental_v2.html` | Texturas reales CC0 (Poly Haven), oclusión ambiental, nubes, arcos y remates en las torres, modelo comprimido |
-| **v3** | `Pilar_3D_Documental_v3.html` | **Recomendada (2:52).** Voz XTTS v2 verificada frase a frase con Whisper, Ebro con reflejos, destellos, palomas, gente en la plaza, velas y rótulos nuevos |
+| v3 | `Pilar_3D_Documental_v3.html` | (2:52) Voz XTTS v2 verificada frase a frase con Whisper, Ebro con reflejos, destellos, palomas, gente en la plaza, velas y rótulos nuevos |
+| **v4** | `Pilar_3D_Documental_v4.html` | **Recomendada (2:53).** La Virgen del Pilar (imagen, columna, mantos, días sin manto, Milagro de Calanda, Ofrenda de Flores), fotografía real de la Virgen, ciudad real de OpenStreetMap (2.636 edificios, Ebro, puentes) y colores de fachada corregidos |
 
 ## Contenido
 - Reconstrucción 3D del Pilar generada con Blender (`build_pilar.py`) a partir de fotografías y documentación publicada.

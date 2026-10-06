@@ -138,10 +138,10 @@ const leadTex = canvasTex(256, 64, (g, w, h) => {
 // v2: texturas reales CC0 (Poly Haven) con mapeado triplanar + relieve (normal map)
 const TEX = {}; const texLoader = new THREE.TextureLoader();
 for (const k in window.__TEX) { const t = texLoader.load(window.__TEX[k]); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; if (k.endsWith('_diff')) t.colorSpace = THREE.SRGBColorSpace; TEX[k] = t; }
-function triplanar(m, name, scale, tint, nStr = 1) {
+function triplanar(m, name, scale, tint, nStr = 1, wash = 0) {
   m.map = null; m.color.set(tint);
   m.onBeforeCompile = sh => {
-    sh.uniforms.tD = { value: TEX[name + '_diff'] }; sh.uniforms.tN = { value: TEX[name + '_nor'] }; sh.uniforms.tS = { value: scale }; sh.uniforms.nS = { value: nStr };
+    sh.uniforms.tD = { value: TEX[name + '_diff'] }; sh.uniforms.tN = { value: TEX[name + '_nor'] }; sh.uniforms.tS = { value: scale }; sh.uniforms.nS = { value: nStr }; sh.uniforms.wsh = { value: wash };
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vWp; varying vec3 vWn;')
       .replace('#include <worldpos_vertex>', `#include <worldpos_vertex>
         vec4 _wp=vec4(transformed,1.); vec3 _n=objectNormal;
@@ -149,12 +149,12 @@ function triplanar(m, name, scale, tint, nStr = 1) {
           _wp=instanceMatrix*_wp; _n=mat3(instanceMatrix)*_n;
         #endif
         vWp=(modelMatrix*_wp).xyz; vWn=normalize(mat3(modelMatrix)*_n);`);
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vWp; varying vec3 vWn; uniform sampler2D tD,tN; uniform float tS,nS;')
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vWp; varying vec3 vWn; uniform sampler2D tD,tN; uniform float tS,nS,wsh;')
       .replace('#include <color_fragment>', `#include <color_fragment>
         vec3 _N=normalize(vWn); vec3 bw=pow(abs(_N),vec3(4.)); bw/=(bw.x+bw.y+bw.z);
         vec2 ux=vWp.zy*tS, uy=vWp.xz*tS, uz=vWp.xy*tS;
         vec3 tc=texture2D(tD,ux).rgb*bw.x+texture2D(tD,uy).rgb*bw.y+texture2D(tD,uz).rgb*bw.z;
-        diffuseColor.rgb*=tc*1.9;`)
+        diffuseColor.rgb*=mix(tc*1.9, vec3(dot(tc,vec3(.33))*1.9+.25), wsh);`)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
         {
         vec3 nx=texture2D(tN,ux).xyz*2.-1., ny=texture2D(tN,uy).xyz*2.-1., nz=texture2D(tN,uz).xyz*2.-1.;
@@ -164,7 +164,7 @@ function triplanar(m, name, scale, tint, nStr = 1) {
         normal=normalize((viewMatrix*vec4(wn,0.)).xyz);
         }`);
   };
-  m.customProgramCacheKey = () => 'tri_' + name + scale;
+  m.customProgramCacheKey = () => 'tri_' + name + scale + '_' + wash;
   return m;
 }
 
@@ -217,8 +217,8 @@ async function loadModel() {
     const mn = o.material.name; const key = mn + (BAROQUE.test(g) ? '_clip' : '');
     if (!matCache[key]) {
       let m = o.material.clone();
-      if (mn === 'Stone') triplanar(m, 'brown_brick_02', 0.5, 0xf2cfa8, 1.2);
-      else if (mn === 'StoneLight') triplanar(m, 'sandstone_blocks_08', 0.3, 0xfff1de, 1.0);
+      if (mn === 'Stone') triplanar(m, 'brown_brick_02', 0.5, 0xf6dcbc, 1.1, 0.45);
+      else if (mn === 'StoneLight') triplanar(m, 'sandstone_blocks_08', 0.3, 0xfff6ea, 1.0, 0.35);
       else if (mn === 'Plaster') triplanar(m, 'beige_wall_001', 0.15, 0xfff4e6, 0.6);
       else if (mn === 'Floor') triplanar(m, 'marble_01', 0.22, 0xf2e8dc, 0.7);
       else if (mn === 'Alabaster') triplanar(m, 'marble_01', 0.6, 0xfff8ee, 0.6);
@@ -263,6 +263,7 @@ async function loadModel() {
     piv.material = o.material; named[name] = piv;
   }
   if (groups.Ceiling) groups.Ceiling.visible = false;
+  for (const n of ['Pillar', 'PillarGlow']) if (named[n]) named[n].visible = false;   // sustituidos por el camarín de la Virgen
   // fantasmas (esquemas de templos anteriores, Torre Nueva)
   const gm = { Romanico: 0xffb070, Gotico: 0x7fd4ff, TorreNueva: 0xffa060 };
   for (const k in gm) if (groups[k]) {
@@ -277,8 +278,8 @@ async function loadModel() {
 function buildCity() {
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(8000, 8000), new THREE.MeshStandardMaterial({ color: 0x8a7560, roughness: 1 }));
   ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
-  const plaza = new THREE.Mesh(new THREE.PlaneGeometry(560, 64), triplanar(new THREE.MeshStandardMaterial({ roughness: 0.8 }), 'granite_tile', 0.22, 0xf4efe6, 0.8));
-  plaza.rotation.x = -Math.PI / 2; plaza.position.copy(B(10, -68, 0.05)); plaza.receiveShadow = true; scene.add(plaza);
+  const plaza = new THREE.Mesh(new THREE.PlaneGeometry(600, 76), triplanar(new THREE.MeshStandardMaterial({ roughness: 0.8 }), 'granite_tile', 0.22, 0xf4efe6, 0.8));
+  plaza.rotation.x = -Math.PI / 2; plaza.position.copy(B(30, -72, 0.05)); plaza.receiveShadow = true; scene.add(plaza);
   // Ebro (al norte), con ondulación
   const waterU = { time: { value: 0 }, sky: { value: new THREE.Color() } };
   const water = new THREE.Mesh(new THREE.PlaneGeometry(4000, 120, 1, 1), new THREE.ShaderMaterial({
@@ -289,28 +290,30 @@ function buildCity() {
       vec3 deep=vec3(.05,.1,.11); vec3 v=normalize(cameraPosition-vW); float fr=pow(1.-max(v.y,0.),4.);
       vec3 c=mix(deep, sky*.8, .12+fr*.55)+r*.03+sky*pow(max(r,0.),6.)*.25; gl_FragColor=vec4(c,1.);} `
   }));
-  water.rotation.x = -Math.PI / 2; water.position.copy(B(0, 125, 0.4)); scene.add(water);
+  water.geometry.dispose(); water.geometry = riverGeometry(); water.rotation.x = -Math.PI / 2; water.position.y = 0.4; scene.add(water);
   // v3: Ebro con reflejo real (Water.js); el agua simple queda como reserva si el equipo va lento
   const nc = document.createElement('canvas'); nc.width = nc.height = 256; const nx = nc.getContext('2d'); const id = nx.createImageData(256, 256);
   const hgt = (x, y) => { let s = 0; for (let k = 1; k <= 6; k++) s += Math.sin((x * (k * 1.7) + y * (k * 0.9)) * Math.PI * 2 / 256 * k + k * 1.3) / k + Math.sin((y * (k * 1.3) - x * (k * 0.6)) * Math.PI * 2 / 256 * k + k) / k; return s; };
   for (let y = 0; y < 256; y++) for (let x = 0; x < 256; x++) { const dx = hgt(x + 1, y) - hgt(x - 1, y), dy = hgt(x, y + 1) - hgt(x, y - 1); const n = new THREE.Vector3(-dx * 2.5, -dy * 2.5, 1).normalize(); const i = (y * 256 + x) * 4; id.data[i] = (n.x * .5 + .5) * 255; id.data[i + 1] = (n.y * .5 + .5) * 255; id.data[i + 2] = (n.z * .5 + .5) * 255; id.data[i + 3] = 255; }
   nx.putImageData(id, 0, 0); const ntex = new THREE.CanvasTexture(nc); ntex.wrapS = ntex.wrapT = THREE.RepeatWrapping;
-  const wr = new Water(new THREE.PlaneGeometry(4000, 120), { textureWidth: 512, textureHeight: 512, waterNormals: ntex, sunDirection: new THREE.Vector3(1, .3, 0), sunColor: 0xffffff, waterColor: 0x0b2a2c, distortionScale: 2.2, fog: true });
-  wr.rotation.x = -Math.PI / 2; wr.position.copy(B(0, 125, 0.45)); wr.material.uniforms.size.value = 6; scene.add(wr);
+  const wr = new Water(riverGeometry(), { textureWidth: 512, textureHeight: 512, waterNormals: ntex, sunDirection: new THREE.Vector3(1, .3, 0), sunColor: 0xffffff, waterColor: 0x0b2a2c, distortionScale: 2.2, fog: true });
+  wr.rotation.x = -Math.PI / 2; wr.position.y = 0.45; wr.material.uniforms.size.value = 6; scene.add(wr);
   water.visible = false; waterU.reflect = wr; waterU.simple = water;
-  for (const yy of [65, 185]) { const bank = new THREE.Mesh(new THREE.BoxGeometry(4000, 3, 6), new THREE.MeshStandardMaterial({ color: 0x6e6252 })); bank.position.copy(B(0, yy, 1)); scene.add(bank); }
+
   // Puente de Piedra (esquemático, aguas abajo)
   const bridgeM = triplanar(new THREE.MeshStandardMaterial({ roughness: 0.9 }), 'sandstone_blocks_08', 0.3, 0xe0c8ae, 1.0);
-  const deck = new THREE.Mesh(new THREE.BoxGeometry(14, 3, 130), bridgeM); deck.position.copy(B(300, 125, 9)); deck.castShadow = true; scene.add(deck);
-  for (let i = 0; i < 6; i++) { const p = new THREE.Mesh(new THREE.BoxGeometry(14, 9, 6), bridgeM); p.position.copy(B(300, 70 + i * 22, 4)); scene.add(p); }
+  
+  CITY.bridges.forEach(b => extrudePoly(b.p, 5.5, 8.5, bridgeM));
   // edificios del entorno (Ayuntamiento, Lonja, La Seo) — volúmenes aproximados
   const bm = triplanar(new THREE.MeshStandardMaterial({ roughness: 0.95 }), 'brown_brick_02', 0.45, 0xe6c2a0, 1.0);
-  [[125, 0, 50, 56, 20], [185, -10, 34, 40, 18], [290, -10, 70, 60, 24]].forEach(([x, y, sx, sy, h]) => {
+  [].forEach(([x, y, sx, sy, h]) => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(sx, h, sy), bm); m.position.copy(B(x, y, h / 2)); m.castShadow = m.receiveShadow = true; scene.add(m);
   });
-  const seoT = new THREE.Mesh(new THREE.BoxGeometry(10, 60, 10), bm); seoT.position.copy(B(262, -36, 30)); seoT.castShadow = true; scene.add(seoT);
-  // trama urbana procedural (no reproduce manzanas reales)
-  const N = 2600, box = new THREE.BoxGeometry(1, 1, 1); box.translate(0, 0.5, 0);
+  
+  // v4: edificios reales de OpenStreetMap (planta y altura), alineados con el modelo
+  buildRealCity();
+  // relleno procedural solo FUERA de la zona cubierta por OSM (horizonte lejano)
+  const N = 1400, box = new THREE.BoxGeometry(1, 1, 1); box.translate(0, 0.5, 0);
   const roof = new THREE.ConeGeometry(0.75, 0.35, 4, 1); roof.rotateY(Math.PI / 4); roof.translate(0, 0.175, 0);
   const im = new THREE.InstancedMesh(box, triplanar(new THREE.MeshStandardMaterial({ roughness: 0.95 }), 'beige_wall_001', 0.12, 0xffffff, 0.8), N);
   const ir = new THREE.InstancedMesh(roof, triplanar(new THREE.MeshStandardMaterial({ roughness: 0.9 }), 'clay_roof_tiles_02', 0.25, 0xffffff, 1.0), N);
@@ -318,10 +321,8 @@ function buildCity() {
   const cols = [0xd8c2a0, 0xc9a882, 0xe3d4ba, 0xb98d6a, 0xd6b58e];
   const rcol = [0xa0583a, 0x9a6046, 0xb36a48, 0x8c5a44];
   while (n < N) {
-    const x = (rnd() - 0.5) * 2400, y = (rnd() - 0.5) * 2400;
-    if (y > 50 && y < 200) continue;                             // río
-    if (x > -320 && x < 340 && y > -110 && y < 50) continue;     // plaza y basílica
-    if (Math.hypot(x + 260, y + 330) < 22) continue;             // emplazamiento Torre Nueva
+    const x = (rnd() - 0.5) * 4400, y = (rnd() - 0.5) * 4400;
+    if (Math.abs(x) < 1150 && Math.abs(y) < 1150) continue;      // zona con edificios reales (OSM)
     const sx = 14 + rnd() * 26, sy = 12 + rnd() * 24, h = 10 + rnd() * 16 + (Math.hypot(x, y) > 700 ? rnd() * 18 : 0);
     const rot = (rnd() < 0.5 ? 0 : 0.08) + (rnd() - 0.5) * 0.06;
     d.position.copy(B(x, y, 0)); d.rotation.set(0, rot, 0); d.scale.set(sx, h, sy); d.updateMatrix(); im.setMatrixAt(n, d.matrix);
@@ -331,6 +332,125 @@ function buildCity() {
   }
   im.castShadow = im.receiveShadow = true; ir.receiveShadow = true; scene.add(im, ir);
   return waterU;
+}
+
+// ------------------------------------------------------------------ v4: CIUDAD REAL (© colaboradores de OpenStreetMap, ODbL)
+const CITY = window.__CITY;
+const TN_POS = [-160, -345];   // Torre Nueva: plaza de San Felipe (ubicación aproximada, junto a la iglesia de San Felipe)
+function riverGeometry() {
+  const shapes = CITY.water.map(w => { const s = new THREE.Shape(w.o.map(p => new THREE.Vector2(p[0], p[1]))); w.i.forEach(h => s.holes.push(new THREE.Path(h.map(p => new THREE.Vector2(p[0], p[1]))))); return s; });
+  return new THREE.ShapeGeometry(shapes, 1);
+}
+function extrudePoly(P, z0, z1, mat) {
+  const s = new THREE.Shape(P.map(p => new THREE.Vector2(p[0], p[1])));
+  const g = new THREE.ExtrudeGeometry(s, { depth: z1 - z0, bevelEnabled: false }); g.rotateX(-Math.PI / 2); g.translate(0, z0, 0);
+  const me = new THREE.Mesh(g, mat); me.castShadow = me.receiveShadow = true; scene.add(me); return me;
+}
+// fachada con ventanas por planta (textura procedural; UV: u = metros a lo largo del muro, v = altura)
+const facadeTex = canvasTex(256, 256, (g, w, h) => {
+  g.fillStyle = '#fff'; g.fillRect(0, 0, w, h);
+  g.fillStyle = 'rgba(0,0,0,.06)'; for (let i = 0; i < 400; i++) g.fillRect(Math.random() * w, Math.random() * h, 2, 2);
+  const win = (x, y, ww, hh) => { g.fillStyle = '#2b2622'; g.fillRect(x, y, ww, hh); g.fillStyle = 'rgba(160,190,210,.35)'; g.fillRect(x + 3, y + 3, ww - 6, hh * .45);
+    g.fillStyle = '#5b4a3a'; g.fillRect(x - 6, y, 5, hh); g.fillRect(x + ww + 1, y, 5, hh); g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(x - 6, y + hh, ww + 12, 4); };
+  win(70, 40, 116, 150);
+  g.fillStyle = 'rgba(40,30,25,.55)'; g.fillRect(56, 196, 144, 6);
+}, [1, 1]);
+function buildRealCity() {
+  const P = [], N = [], UV = [], C = [], I = []; let vi = 0;
+  const pal = [[0.93, 0.86, 0.74], [0.89, 0.78, 0.62], [0.96, 0.91, 0.82], [0.85, 0.70, 0.55], [0.92, 0.84, 0.70], [0.80, 0.66, 0.52]];
+  const RP = [], RI = []; let rvi = 0;
+  CITY.buildings.forEach((b, bi) => {
+    let pts = b.p; if (pts.length < 3) return;
+    const cx = pts.reduce((a, p) => a + p[0], 0) / pts.length, cy = pts.reduce((a, p) => a + p[1], 0) / pts.length;
+    if (Math.hypot(cx - TN_POS[0], cy - TN_POS[1]) < 14) return;
+    let ar = 0; for (let i = 0; i < pts.length; i++) { const a = pts[i], c = pts[(i + 1) % pts.length]; ar += a[0] * c[1] - c[0] * a[1]; }
+    if (ar < 0) pts = pts.slice().reverse();
+    const h = b.h, col = b.k ? [0.9, 0.78, 0.62] : pal[bi % pal.length];
+    let u = 0;
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i], c = pts[(i + 1) % pts.length]; const L = Math.hypot(c[0] - a[0], c[1] - a[1]); if (L < 0.05) continue;
+      const nx = (c[1] - a[1]) / L, ny = -(c[0] - a[0]) / L;     // normal exterior (Blender)
+      const A = B(a[0], a[1], 0), Cc = B(c[0], c[1], 0);
+      P.push(A.x, 0, A.z, Cc.x, 0, Cc.z, Cc.x, h, Cc.z, A.x, h, A.z);
+      for (let k = 0; k < 4; k++) { N.push(nx, 0, -ny); C.push(...col); }
+      const u0 = u / 3.6, u1 = (u + L) / 3.6, v1 = h / 3.3; UV.push(u0, 0, u1, 0, u1, v1, u0, v1); u += L;
+      I.push(vi, vi + 1, vi + 2, vi, vi + 2, vi + 3); vi += 4;
+    }
+    // cubierta (plana, con textura de teja vista desde arriba)
+    const v2 = pts.map(p => new THREE.Vector2(p[0], p[1])); const tri = THREE.ShapeUtils.triangulateShape(v2, []);
+    pts.forEach(p => { const q = B(p[0], p[1], h); RP.push(q.x, q.y, q.z); });
+    tri.forEach(t => RI.push(rvi + t[0], rvi + t[2], rvi + t[1])); rvi += pts.length;
+  });
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2)); g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3)); g.setIndex(I);
+  const wm = new THREE.MeshStandardMaterial({ map: facadeTex, vertexColors: true, roughness: 0.92 });
+  const walls = new THREE.Mesh(g, wm); walls.castShadow = walls.receiveShadow = true; scene.add(walls);
+  const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.Float32BufferAttribute(RP, 3)); rg.setIndex(RI); rg.computeVertexNormals();
+  const roofs = new THREE.Mesh(rg, triplanar(new THREE.MeshStandardMaterial({ roughness: 0.9, side: THREE.DoubleSide }), 'clay_roof_tiles_02', 0.3, 0xd4b49a, 1.0, 0.25));
+  roofs.receiveShadow = true; scene.add(roofs);
+}
+
+// ------------------------------------------------------------------ v4: LA VIRGEN DEL PILAR (recreación; referencias: fotografía real y catedraldezaragoza.es)
+const VN = [36.0, 3.2];   // camarín (posición esquemática dentro de la Santa Capilla)
+const virgin = {};
+function buildVirgin() {
+  const g = new THREE.Group(); scene.add(g); virgin.g = g;
+  const base = B(VN[0], VN[1], 0.9);
+  // fondo de mármol verde con 72 estrellas (dato oficial)
+  const marble = canvasTex(512, 768, (c, w, h) => {
+    const gr = c.createLinearGradient(0, 0, w, h); gr.addColorStop(0, '#5f7466'); gr.addColorStop(1, '#3f5548'); c.fillStyle = gr; c.fillRect(0, 0, w, h);
+    for (let i = 0; i < 260; i++) { c.strokeStyle = `rgba(${200 + Math.random() * 55},${220 + Math.random() * 35},${210},${0.06 + Math.random() * .1})`; c.lineWidth = .5 + Math.random() * 2; c.beginPath(); let x = Math.random() * w, y = Math.random() * h; c.moveTo(x, y); for (let k = 0; k < 6; k++) { x += (Math.random() - .5) * 90; y += Math.random() * 60; c.lineTo(x, y); } c.stroke(); }
+  });
+  const panel = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 3.9), new THREE.MeshStandardMaterial({ map: marble, roughness: 0.25, metalness: 0.1 }));
+  panel.position.copy(base).add(new THREE.Vector3(0, 1.95, -0.55)); g.add(panel);
+  const starG = new THREE.OctahedronGeometry(0.045, 0); starG.scale(1, 1, 0.3);
+  const stars = new THREE.InstancedMesh(starG, new THREE.MeshStandardMaterial({ color: 0xffd27a, emissive: 0xcc8a20, emissiveIntensity: 1.2, metalness: 0.9, roughness: 0.3 }), 72);
+  const D = new THREE.Object3D(); let k = 0;
+  for (let r = 0; r < 9; r++) for (let c = 0; c < 8; c++) { D.position.set(-1.05 + c * 0.3 + (r % 2) * 0.15, 0.35 + r * 0.42, -0.53); D.updateMatrix(); stars.setMatrixAt(k++, D.matrix); }
+  stars.position.copy(base); g.add(stars);
+  // marco dorado y dosel de plata
+  const gold = new THREE.MeshStandardMaterial({ color: 0xd8a84a, metalness: 1, roughness: 0.28, emissive: 0x2a1a00 });
+  const silver = new THREE.MeshStandardMaterial({ color: 0xdfe3e8, metalness: 1, roughness: 0.22 });
+  const arch = new THREE.Mesh(new THREE.TorusGeometry(1.3, 0.09, 8, 40, Math.PI), gold); arch.position.copy(base).add(new THREE.Vector3(0, 3.4, -0.5)); g.add(arch);
+  for (const s of [-1, 1]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.18, 3.4, 0.18), gold); p.position.copy(base).add(new THREE.Vector3(s * 1.3, 1.7, -0.5)); g.add(p); }
+  const can = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.75, 0.35, 24, 1, true), silver); can.position.copy(base).add(new THREE.Vector3(0, 2.75, -0.15)); g.add(can);
+  // la columna (1,70 m · Ø 24 cm), forrada de bronce y plata
+  const col = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 1.70, 32), silver); col.position.copy(base).add(new THREE.Vector3(0, 0.85, 0)); g.add(col);
+  const plinth = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, 0.12, 24), silver); plinth.position.copy(base).add(new THREE.Vector3(0, 0.06, 0)); g.add(plinth);
+  // la imagen (36 cm): silueta sencilla, sin pretender reproducir la talla
+  const wood = new THREE.MeshStandardMaterial({ color: 0x3a2a1e, roughness: 0.55, metalness: 0.15 });
+  const fig = new THREE.Mesh(new THREE.LatheGeometry([[0.07, 0], [0.075, 0.04], [0.06, 0.16], [0.05, 0.25], [0.035, 0.29], [0.03, 0.31], [0.035, 0.33], [0.025, 0.36], [0, 0.365]].map(p => new THREE.Vector2(...p)), 20), wood);
+  fig.position.copy(base).add(new THREE.Vector3(0, 1.70, 0)); g.add(fig);
+  const child = new THREE.Mesh(new THREE.SphereGeometry(0.03, 12, 8), wood); child.position.copy(base).add(new THREE.Vector3(0.05, 1.70 + 0.22, 0.04)); g.add(child);
+  const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.03, 0.05, 12, 1, true), gold); crown.position.copy(base).add(new THREE.Vector3(0, 1.70 + 0.385, 0)); g.add(crown);
+  // resplandor (rayos dorados, como en la imagen real)
+  const rays = new THREE.Group(); for (let i = 0; i < 48; i++) { const L = i % 2 ? 0.16 : 0.24; const r = new THREE.Mesh(new THREE.BoxGeometry(0.008, L, 0.004), gold); const a = i / 48 * Math.PI * 2; r.position.set(Math.sin(a) * (0.16 + L / 2), Math.cos(a) * (0.16 + L / 2), 0); r.rotation.z = -a; rays.add(r); }
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.012, 6, 40), gold); rays.add(ring);
+  rays.position.copy(base).add(new THREE.Vector3(0, 1.70 + 0.3, -0.06)); g.add(rays); virgin.rays = rays;
+  // el manto (≈ 80 cm de alto, 40 cm arriba y 140 cm abajo; dato oficial) cubre la parte alta de la columna
+  const mantoTex = canvasTex(256, 256, (c, w, h) => { c.fillStyle = '#f5f0e6'; c.fillRect(0, 0, w, h); c.strokeStyle = '#c9a050'; c.lineWidth = 6; c.strokeRect(10, 10, w - 20, h - 20);
+    c.fillStyle = '#c9a050'; c.font = 'bold 60px Georgia'; c.textAlign = 'center'; c.fillText('✦', w / 2, h / 2 + 20); for (let i = 0; i < 9; i++) { c.fillRect(20 + i * 26, h - 30, 14, 14); } });
+  const manto = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.24, 0.8, 32, 1, true), new THREE.MeshStandardMaterial({ map: mantoTex, color: 0xd8d2c8, side: THREE.DoubleSide, roughness: 0.85, transparent: true }));
+  manto.position.copy(base).add(new THREE.Vector3(0, 1.70 - 0.4 + 0.02, 0)); g.add(manto); virgin.manto = manto; virgin.mantoY = manto.position.y;
+  const spot = new THREE.SpotLight(0xfff0d0, 0, 9, 0.5, 0.6, 1.2); spot.position.copy(base).add(new THREE.Vector3(0, 3.6, 2.6)); spot.target.position.copy(base).add(new THREE.Vector3(0, 1.8, 0)); g.add(spot, spot.target); virgin.spot = spot;
+  const glow = new THREE.PointLight(0xffd9a0, 0, 4, 1.5); glow.position.copy(base).add(new THREE.Vector3(0, 2.0, 0.6)); g.add(glow); virgin.glow = glow;
+  // más de 450 mantos: uno por instancia, con sus proporciones reales
+  const n = 450, mg = new THREE.CylinderGeometry(0.2, 0.7, 0.8, 16, 1, true);
+  const mm = new THREE.InstancedMesh(mg, new THREE.MeshStandardMaterial({ side: THREE.DoubleSide, roughness: 0.6, metalness: 0.15, transparent: true, opacity: 0 }), n);
+  const pal = [0xf5f0e6, 0x2f56a6, 0xd9b04a, 0x9c2a2a, 0x2f6b4a, 0xe8d8b8, 0x6a3c8c, 0xf2c6c6, 0x1f3a6e, 0xc9a050];
+  virgin.mp = []; for (let i = 0; i < n; i++) { mm.setColorAt(i, new THREE.Color(pal[i % pal.length])); virgin.mp.push({ a: i * 2.39996, r: 3.8 + (i / n) * 10, y: 0.6 + (i % 37) * 0.38, s: 0.15 + Math.random() * 0.1 }); }
+  mm.frustumCulled = false; scene.add(mm); virgin.mm = mm;
+}
+// Ofrenda de Flores (evocación con partículas): montaña de flores ante la basílica
+let flowers;
+function buildFlowers() {
+  const n = 9000, g = new THREE.BufferGeometry(), p = new Float32Array(n * 3), c = new Float32Array(n * 3);
+  const pal = [[1, .25, .3], [1, .85, .3], [1, 1, 1], [.95, .45, .7], [1, .55, .2], [.7, .2, .5]];
+  for (let i = 0; i < n; i++) { const a = Math.random() * 6.283, r = Math.pow(Math.random(), .7) * 16, hgt = Math.max(0, (1 - r / 16) * 11 * (0.7 + Math.random() * .3));
+    const q = B(0 + Math.cos(a) * r, -62 + Math.sin(a) * r * .8, hgt); p.set([q.x, q.y, q.z], i * 3); c.set(pal[i % pal.length], i * 3); }
+  g.setAttribute('position', new THREE.BufferAttribute(p, 3)); g.setAttribute('color', new THREE.BufferAttribute(c, 3)); g.setDrawRange(0, 0);
+  flowers = new THREE.Points(g, new THREE.PointsMaterial({ size: 0.55, vertexColors: true, sizeAttenuation: true })); scene.add(flowers);
 }
 
 // ------------------------------------------------------------------ INTERIOR: techo con óculos bajo las cúpulas
@@ -452,22 +572,27 @@ function shot(t0, t1, P, L, fov = 42, e = ease) {
 function buildShots() {
   SHOTS = [];
   const b1 = cue('bells', 1).s, b2 = cue('bells', 2).s, pil = S.sitios - 7.4;
-  const c1 = cue('capilla', 1).s, c3 = cue('capilla', 3).s;
+  const c1 = S.goya, c3 = S.bells - 1.2, v1 = cue('virgen', 1).s, v2 = cue('virgen', 2).s, v3 = cue('virgen', 3).s, v4 = cue('virgen', 4).s;
   const t1 = cue('sitios', 1).s, t2 = cue('sitios', 2).s;
-  const k1 = cue('bombs', 1).s, k3 = cue('bombs', 3).s, a1 = cue('azuara', 1).s;
+  const k1 = cue('bombs', 1).s, k3 = cue('bombs', 2).s, a1 = cue('azuara', 1).s;
   shot(0, S.ebro, [[460, 140, 9], [380, 125, 12]], [[0, 10, 40], [0, 0, 42]], 38, t => t);
   shot(S.ebro, S.rewind, [[380, 125, 12], [240, 112, 10], [120, 105, 24], [10, 140, 52]], [[0, 0, 42], [0, 0, 38], [-20, 0, 40], [0, -10, 30]], 40);
   shot(S.rewind, S.capilla, [[10, 140, 52], [-170, 170, 120], [-240, -40, 150], [-120, -230, 140], [110, -240, 120]], [[0, -10, 30], [0, 0, 20], [0, 0, 20], [0, 0, 20], [10, 0, 25]], 44, t => t);
-  shot(S.capilla, c1, [[110, -240, 120], [40, -120, 12], [30, -46, 6], [30, -31, 5.5], [32.5, -17, 4.5], [33, -9.5, 3.6]], [[10, 0, 25], [30, 0, 10], [30, 0, 7], [32, 0, 6], [33, 0, 6], [33, 0, 7]], 48);
-  shot(c1, c3, [[33, -9.5, 3.6], [44, -17, 4.5], [48.8, -19.6, 7]], [[33, 0, 7], [50, -21, 25], [50.15, -21.2, 40]], 60);
-  shot(c3, S.bells - 1.2, [[10, -24, 5], [4, -22, 5], [0, -21, 6.5]], [[3, -9, 8], [0, -9, 9], [0, -9, 10]], 50);
+  shot(S.capilla, S.virgen, [[110, -240, 120], [40, -120, 12], [30, -46, 6], [30, -31, 5.5], [32.5, -17, 4.5], [34.5, -6, 3.2]], [[10, 0, 25], [30, 0, 10], [30, 0, 7], [32, 0, 6], [34, 0, 5], [36, 3.2, 2.8]], 48);
+  // LA VIRGEN: acercamiento al camarín
+  shot(S.virgen, v1, [[34.5, -6, 3.2], [35.6, -1.2, 2.7], [35.9, 0.9, 2.75]], [[36, 3.2, 2.8], [36, 3.2, 2.75], [36, 3.2, 2.85]], 44);
+  shot(v1, v2, [[35.9, 0.9, 2.75], [36.25, 2.0, 2.85]], [[36, 3.2, 2.85], [36, 3.2, 2.87]], 40, t => t);
+  shot(v2, v3, [[36.25, 2.0, 2.85], [36.6, 1.4, 2.2], [36.1, 0.8, 1.7]], [[36, 3.2, 2.87], [36, 3.2, 2.2], [36, 3.2, 1.9]], 42);
+  shot(v3, v4, [[36.1, 0.8, 1.7], [37.5, -3, 4.5], [36, -6.5, 8], [35.2, 0.2, 2.9]], [[36, 3.2, 1.9], [36, 3.2, 3.5], [36, 3.2, 5], [36, 3.2, 2.5]], 50);
+  shot(v4, c1, [[35.2, 0.2, 2.9], [35.85, 1.7, 2.8]], [[36, 3.2, 2.5], [36, 3.2, 2.85]], 46, t => t);
+  shot(c1, c3, [[35.85, 1.7, 2.8], [38, -6, 4], [44, -17, 4.5], [48.8, -19.6, 7]], [[36, 3.2, 2.85], [44, -15, 8], [50, -21, 25], [50.15, -21.2, 40]], 60);
   shot(S.bells - 1.2, b1, [[-90, -78, 4], [-84, -60, 30], [-76, -48, 52]], [[-64, -32.5, 20], [-64, -32.5, 40], [-64, -32.5, 58]], 44);
   shot(b1, b2, [[-76, -48, 52], [-68, -40, 58.5], [-62.5, -35, 58.5]], [[-64, -32.5, 58], [-64, -32.5, 57], [-64.5, -32, 56.5]], 52);
   shot(b2, pil, [[-62.5, -35, 58.5], [-61.6, -34.6, 57.2]], [[-64.5, -32, 56.5], [-64, -32.5, 56.2]], 50);
   shot(pil, S.sitios, [[-61.6, -34.6, 57.2], [-62, -35, 57.4], [-100, -110, 95], [-160, -260, 170]], [[-64, -32.5, 56.2], [-64, -32.5, 56.5], [-64, -32.5, 40], [-40, -20, 20]], 50, t => t < .3 ? t * .3 / .3 * .35 : .35 + ease((t - .3) / .7) * .65);
   shot(S.sitios, t1, [[-160, -260, 170], [40, -80, 75], [67.5, -36.8, 56]], [[-40, -20, 20], [64, -32.5, 58], [64, -32.5, 55.6]], 50);
-  shot(t1, t2 + 1.5, [[67.5, -36.8, 56], [110, -170, 110], [80, -300, 100]], [[64, -32.5, 55.6], [-60, -180, 40], [-140, -250, 40]], 46);
-  shot(t2 + 1.5, S.bombs, [[80, -300, 100], [120, -120, 60], [100, -70, 40]], [[-140, -250, 40], [64, -32.5, 58], [0, 30, 30]], 46);
+  shot(t1, t2 + 1.5, [[67.5, -36.8, 56], [110, -170, 110], [60, -300, 100]], [[64, -32.5, 55.6], [-80, -230, 40], [-160, -345, 40]], 46);
+  shot(t2 + 1.5, S.bombs, [[60, -300, 100], [120, -120, 60], [100, -70, 40]], [[-160, -345, 40], [64, -32.5, 58], [0, 30, 30]], 46);
   shot(S.bombs, k3, [[90, -230, 120], [40, -150, 80], [12, -95, 55]], [[10, 0, 40], [5, 0, 50], [2, 0, 48]], 44, t => t);
   shot(k3, S.azuara, [[20, 2, 3.2], [22.2, 4.4, 3.4]], [[25.3, 6.8, 3.5], [25.4, 7.0, 3.6]], 40, t => t);
   shot(S.azuara, a1, [[2000, -4.6, 1.9], [2000, -3.2, 3.0]], [[2000, 6, 2.6], [2000, 6, 3.2]], 52, t => t);   // (coords de la sala: x desplazada)
@@ -494,16 +619,26 @@ function buildCards() {
   const r1 = cue('rewind', 1);
   card(r1.s + 0.2, at('rewind', 1, 'La de la plaza'), '<div class="big">1961</div><div class="m">Torres del lado del río<br>(obra financiada por Francisco Urzaiz y Leonor Sala)</div>');
   card(at('rewind', 1, 'La de la plaza'), r1.e + 0.3, '<div class="big">1907</div><div class="m">Torre junto al Ayuntamiento<br>(Ricardo Magdalena · Fernando de Yarza)</div>');
-  card(cue('rewind', 2).s, cue('rewind', 3).s, '<div class="big">1681</div><div class="m">Comienza el templo barroco<br>Trazas: Felipe Sánchez · revisión: Francisco Herrera el Mozo</div>');
+  card(cue('rewind', 2).s, cue('rewind', 3).s + 0.01, '<div class="big">1681</div><div class="m">Comienza el templo barroco<br>Trazas: Felipe Sánchez · revisión: Francisco Herrera el Mozo</div>');
   card(cue('rewind', 3).s, at('rewind', 3, 'Y antes'), '<div class="big">h. 1515</div><div class="m">Templo gótico-mudéjar</div>');
   card(at('rewind', 3, 'Y antes'), cue('rewind', 3).e + 0.6, '<div class="big">1118 · 1434</div><div class="m">Templo románico tras la conquista de Alfonso I<br>destruido por un incendio en 1434</div>');
   card(at('rewind', 3, 'gótico'), cue('rewind', 3).e + 0.6, 'Esquema ilustrativo. La forma exacta de los templos anteriores no se conoce.', 'disclaim');
   card(cue('rewind', 3).e + 0.7, S.capilla, '<div class="big" id="yearRoll">1515</div>', 'center');
-  card(cue('capilla', 0).s + 0.5, c(1), '<div class="k">SANTA CAPILLA</div><div class="big">1750 – 1765</div><div class="m">Ventura Rodríguez · templete oval que guarda la columna</div>');
-  card(c(1) + 0.4, c(3), '<div class="k">CÚPULA «REGINA MARTYRUM»</div><div class="big">1780 – 1781</div><div class="m">Francisco de Goya · terminada el 28 de mayo de 1781</div>');
-  card(c(1) + 1.5, c(3), 'Fotografía real del fresco (Wikimedia Commons, dominio público) proyectada sobre la reconstrucción', 'disclaim');
-  card(c(3) + 0.3, S.bells, '<div class="k">RETABLO MAYOR</div><div class="big">1509 – 1518</div><div class="m">Damián Forment · alabastro</div>');
-  card(S.capilla + 3, S.bells, 'Interior: reconstrucción 3D esquemática basada en documentación disponible', 'disclaim');
+  card(cue('capilla', 0).s + 0.5, S.virgen, '<div class="k">SANTA CAPILLA</div><div class="big">1750 – 1765</div><div class="m">Ventura Rodríguez · templete oval que guarda la columna</div>');
+  // LA VIRGEN DEL PILAR (fuente: catedraldezaragoza.es)
+  const V = i => cue('virgen', i).s;
+  card(V(0) + 0.4, V(1), '<div class="k">PATRONA DE LA HISPANIDAD · FIESTA, 12 DE OCTUBRE</div><div class="big">LA VIRGEN<br>DEL PILAR</div>');
+  card(V(1) + 0.2, V(2), '<div class="k">LA IMAGEN</div><div class="big">36 cm</div><div class="m">Talla de madera, primera mitad del siglo XV<br>Atribuida a Juan de la Huerta (estudios de M.ª Carmen Lacarra)</div>');
+  card(V(1) + 0.6, V(3), '<img src="data:image/jpeg;base64,' + window.__VIRGIN + '" alt="Virgen del Pilar"><div class="cap">Fotografía real · Miguel Hermoso Cuesta · CC BY-SA 4.0</div>', 'photo');
+  card(V(2) + 0.2, V(3), '<div class="k">LA COLUMNA</div><div class="big">1,70 m</div><div class="m">Jaspe · Ø 24 cm · forrada de bronce y después de plata</div>');
+  card(at('virgen', 3, 'Tiene'), at('virgen', 3, 'pero los'), '<div class="big">+ 450</div><div class="m">mantos · uno distinto cada día<br>cada uno de unos 80 cm de alto</div>');
+  card(at('virgen', 3, 'pero los') + 0.3, V(4), '<div class="big">2 · 12 · 20</div><div class="m">Días sin manto: la Venida (2 de enero),<br>la fiesta (12 de octubre) y la coronación (20 de mayo de 1905)</div>');
+  card(V(4) + 0.3, S.goya, '<div class="k">EL MILAGRO DE CALANDA</div><div class="big">1640</div><div class="m">Miguel Juan Pellicer · amputada en el Hospital de Gracia de Zaragoza<br>29 de marzo de 1640: dice despertar con la pierna · 25 testigos<br>Sentencia del arzobispo Pedro Apaolaza, 27 de abril de 1641</div>');
+  card(V(4) + 1.5, S.goya, 'Relato de fe documentado en el proceso canónico; la sentencia lo declaró milagro.', 'disclaim');
+  card(V(0) + 1, V(4), 'Camarín y figura: recreación 3D; la talla real no se reproduce. Datos: catedraldezaragoza.es', 'disclaim');
+  card(S.goya + 0.4, S.bells, '<div class="k">CÚPULA «REGINA MARTYRUM»</div><div class="big">1780 – 1781</div><div class="m">Francisco de Goya · terminada el 28 de mayo de 1781<br>Su estilo chocó con el de su cuñado y supervisor, Francisco Bayeu</div>');
+  card(S.goya + 1.5, S.bells, 'Fotografía real del fresco (Wikimedia Commons, dominio público) proyectada sobre la reconstrucción', 'disclaim');
+  card(S.capilla + 3, S.virgen, 'Interior: reconstrucción 3D esquemática basada en documentación disponible', 'disclaim');
   card(cue('bells', 1).s, cue('bells', 2).s, `<div class="k">INVENTARIO DE CAMPANAS</div><div class="cols">
    <div><b>Torre alta de la plaza · 9</b><br>Santa Ana · 1884<br>Campana del reloj · 1764 · Lester &amp; Pack (Londres)<br>La Santiaga · 1771 / 1804 *<br>Santa Isabel · 1971<br>Juana Paula · 1983<br>La Braulia · 1783<br>La Indalecia · 1794<br>Petra Paula · 1971<br><b>La Pilara · 1866</b></div>
    <div><b>Torre baja de la plaza · 6</b><br><b>Campana de los Sitios · 1711 *</b><br>Cuartos de la Torre Nueva · 1508 *<br>Carillón de Correos · 4 · 1940<br><br><b>Trascoro · 1</b><br>Campana de señales · h. 1900</div></div>
@@ -511,17 +646,18 @@ function buildCards() {
   card(cue('bells', 2).s + 0.2, S.sitios - 0.5, '<div class="k">CAMPANA</div><div class="big">LA PILARA</div><div class="m">1866 · Andrés de Argos y Eugenio de Zuvieta<br>Ø 157 cm · 2.170 kg</div>');
   card(S.sitios - 6.6, S.sitios - 1, '<div class="tag">BANDEO</div><div class="m">Volteo completo de la campana mayor, reservado a las grandes fiestas</div>');
   card(cue('sitios', 0).s + 2.5, t(1), '<div class="k">CAMPANA</div><div class="big">DE LOS SITIOS</div><div class="m">1711 · Andrés de Asín · Ø 220 cm · 6.165 kg<br>Antes llamada «el Relox»</div>');
-  card(t(1) + 1.2, t(2), '<div class="k">TORRE NUEVA · 1504 – 1892</div><div class="m">Torre mudéjar del reloj municipal, inclinada<br>Esquema ilustrativo (no a escala exacta)</div>');
+  card(t(1) + 1.2, t(2), '<div class="k">TORRE NUEVA · 1504 – 1892</div><div class="m">Torre mudéjar del reloj municipal, inclinada · plaza de San Felipe<br>Antes llamada su campana «el Relox»<br>Esquema ilustrativo; ubicación aproximada</div>');
   card(t(2) + 0.2, S.bombs - 0.5, '<div class="big">1892</div><div class="m">Derribo de la Torre Nueva · sus campanas pasan al Pilar</div>');
   card(cue('bombs', 0).s + 0.3, k(1), '<div class="big">3 · VIII · 1936</div><div class="m">Madrugada</div>');
-  card(k(1) + 0.3, k(2), '<div class="big">3 o 4</div><div class="m">bombas, según las fuentes</div>');
-  card(at('bombs', 1, 'Ninguna'), k(2) + 0.2, '<div class="big">NINGUNA EXPLOTÓ</div>', 'center');
-  card(k(2), k(3), '<div class="cols"><div><span class="tag">TRADICIÓN</span><br>Milagro</div><div><span class="tag alt">INVESTIGACIÓN</span><br>Fallo de las espoletas<br>o sabotaje (VSCW)</div></div>', 'wide');
-  card(k(3) + 0.2, S.azuara, '<div class="k">EXPUESTAS JUNTO A LA SANTA CAPILLA</div><div class="m">Hispana A-6 de 50 kg, según VSCW. Su autenticidad ha sido cuestionada.</div>');
+  card(k(1) + 0.3, at('bombs', 1, 'Ninguna'), '<div class="big">3 o 4</div><div class="m">bombas, según las fuentes</div>');
+  card(at('bombs', 1, 'Ninguna'), at('bombs', 1, 'Ninguna') + 2.2, '<div class="big">NINGUNA EXPLOTÓ</div>', 'center');
+  card(at('bombs', 1, 'Ninguna') + 2.2, k(2), '<div class="cols"><div><span class="tag">TRADICIÓN</span><br>Milagro</div><div><span class="tag alt">INVESTIGACIÓN</span><br>Fallo de las espoletas<br>o sabotaje (VSCW)</div></div>', 'wide');
+  card(k(2) + 0.2, S.azuara, '<div class="k">EXPUESTAS JUNTO A LA SANTA CAPILLA</div><div class="m">Hispana A-6 de 50 kg, según VSCW. Su autenticidad ha sido cuestionada.</div>');
   card(S.azuara + 0.5, cue('azuara', 1).s, 'Recreación. Inscripción documentada por Campaners de la Catedral de València; la letra original no se reproduce.', 'disclaim');
   card(at('azuara', 0, 'José Azuara') + 1.5, cue('azuara', 1).s, '<div class="k">EL ÚLTIMO CAMPANERO</div><div class="m">El «tío» Simeón Millán tocó a mano las campanas del Pilar durante buena parte del siglo XX. Poco después de su muerte, hacia 1964, se electrificaron.</div>');
-  card(cue('azuara', 1).s + 0.5, S.outro + 0.5, '<div class="k">TRES VECES AL DÍA</div><div class="m">La megafonía de las torres difunde la jaculatoria:<br><i>«Bendita y alabada sea la hora en que María Santísima vino en carne mortal a Zaragoza»</i></div>');
-  card(S.outro + 1, TOTAL - 1.0, '<div class="title">EL PILAR</div><div class="subtitle">Memoria de piedra y bronce</div><div class="m small" style="margin-top:2vh">Reconstrucción 3D basada en documentación disponible · Fuentes al final</div>', 'center');
+  card(cue('azuara', 1).s + 0.5, cue('azuara', 1).e + 0.3, '<div class="k">TRES VECES AL DÍA</div><div class="m">La megafonía de las torres difunde la jaculatoria:<br><i>«Bendita y alabada sea la hora en que María Santísima vino en carne mortal a Zaragoza»</i></div>');
+  card(cue('azuara', 1).e + 0.3, S.outro + 0.9, '<div class="k">OFRENDA DE FLORES · DESDE EL 12 DE OCTUBRE DE 1958</div><div class="m">La primera reunió a unas 2.000 personas durante dos horas.<br>Hoy dura unas ocho horas en la plaza del Pilar.<br><i>Evocación con partículas; no reproduce la estructura real.</i></div>');
+  card(S.outro + 1.2, TOTAL - 1.0, '<div class="title">EL PILAR</div><div class="subtitle">Memoria de piedra y bronce</div><div class="m small" style="margin-top:2vh">Reconstrucción 3D basada en documentación disponible · Fuentes al final</div>', 'center');
   function c(i) { return cue('capilla', i).s; } function t(i) { return cue('sitios', i).s; } function k(i) { return cue('bombs', i).s; }
 }
 
@@ -542,14 +678,14 @@ function update(t) {
   let env = E[0]; for (const e of E) if (t >= e[0]) env = e;
   setEnv(env[1], env[2], sm(env[3], env[4], t));
   const inside = camera.position.y < 22 && Math.abs(camera.position.x) < 64 && Math.abs(camera.position.z) < 33;
-  interiorLights.visible = inside || (t > cue('bombs', 3).s - 0.5 && t < S.azuara);
+  interiorLights.visible = inside || (t > cue('bombs', 2).s - 0.5 && t < S.azuara);
   shaftM.uniforms.op.value = inside ? 1 : 0; dust.material.opacity = inside ? 0.7 : 0;
   hemi.intensity *= inside ? 0.6 : 1;
   grade.uniforms.warm.value = inside ? 1 : 0.3;
 
   // fundido a negro: inicio, cortes, final
   let fade = 1 - sm(1.5, 4.5, t);
-  for (const cut of [cue('bombs', 3).s, S.azuara, cue('azuara', 1).s]) fade = Math.max(fade, 1 - Math.min(1, Math.abs(t - cut) / 0.45));
+  for (const cut of [cue('bombs', 2).s, S.azuara, cue('azuara', 1).s]) fade = Math.max(fade, 1 - Math.min(1, Math.abs(t - cut) / 0.45));
   fade = Math.max(fade, sm(TOTAL - 2.5, TOTAL - 0.2, t));
   grade.uniforms.fade.value = fade; grade.uniforms.time.value = t;
   grade.uniforms.sepia.value = sm(cue('rewind', 3).s - 1, cue('rewind', 3).s + 1, t) * (1 - sm(cue('rewind', 3).e + 0.6, cue('rewind', 3).e + 3, t)) * 0.7;
@@ -587,20 +723,20 @@ function update(t) {
   bellLight.position.copy(t < S.sitios + 3 ? B(-64, -34, 60) : B(64, -34, 60)); bellLight.intensity = (t > cue('bells', 1).s && t < S.sitios + 10) || (t > cue('sitios', 0).s && t < S.bombs) ? 40 : 0;
 
   // TORRE NUEVA: aparece, la campana viaja, desaparece
-  const tn = groups.TorreNueva, tns = cue('sitios', 1).s, tnd = cue('sitios', 2).s;
+  const tn = groups.TorreNueva, tns = cue('sitios', 1).s, tnd = cue('sitios', 2).s, TNc = B(TN_POS[0], TN_POS[1], 0);
   if (tn) {
     const on = sm(tns + 0.3, tns + 2.5, t) * (1 - sm(tnd + 2.2, tnd + 4.5, t));
     ghost('TorreNueva', on); tn.position.y = -80 * (1 - sm(tns, tns + 3, t));
     const c = B(-260, -330, 0); tn.rotation.set(0, 0, 0);
     tn.position.x = 0; tn.position.z = 0;
     // inclinación (esquemática) aplicada como rotación alrededor de su base
-    tn.matrixAutoUpdate = false; const m = new THREE.Matrix4().makeTranslation(c.x, c.y + tn.position.y, c.z).multiply(new THREE.Matrix4().makeRotationZ(-0.045)).multiply(new THREE.Matrix4().makeTranslation(-c.x, -c.y, -c.z));
+    tn.matrixAutoUpdate = false; const m = new THREE.Matrix4().makeTranslation(TNc.x, tn.position.y, TNc.z).multiply(new THREE.Matrix4().makeRotationZ(-0.045)).multiply(new THREE.Matrix4().makeTranslation(-c.x, -c.y, -c.z));
     tn.matrix.copy(m);
   }
   const fly = named['Bell_Sitios'];
   if (fly && groups.Bells_SE) {
     if (!fly.userData.home) fly.userData.home = fly.position.clone();
-    const k = sm(tnd + 0.4, tnd + 3.6, t), from = B(-260, -330, 66), to = fly.userData.home;
+    const k = sm(tnd + 0.4, tnd + 3.6, t), from = B(TN_POS[0], TN_POS[1], 66), to = fly.userData.home;
     if (t > tns && t < tnd + 4) {
       const p = from.clone().lerp(to, k); p.y += Math.sin(k * Math.PI) * 60; fly.position.copy(t < tnd + 0.4 ? from : p);
     } else { fly.position.copy(to); }
@@ -610,7 +746,7 @@ function update(t) {
   const kb = cue('bombs', 1);
   const bf = groups.BombsFall;
   if (bf) {
-    bf.visible = t > kb.s - 0.5 && t < cue('bombs', 3).s;
+    bf.visible = t > kb.s - 0.5 && t < cue('bombs', 2).s;
     if (bf.visible) {
       const k = 0.9 * ease(clamp((t - kb.s + 0.4) / (at('bombs', 1, 'Ninguna') - kb.s + 0.4)));
       const targets = [[10, -62, 1], [20, -5, 33], [-15, 10, 33], [0, 110, 1]];
@@ -618,7 +754,20 @@ function update(t) {
     }
   }
   grade.uniforms.flash.value = 0;
-  bombLight.intensity = t > kb.s - 0.5 && t < cue('bombs', 3).s - 0.4 ? 650 : 0;
+  bombLight.intensity = t > kb.s - 0.5 && t < cue('bombs', 2).s - 0.4 ? 650 : 0;
+  // LA VIRGEN: luz, manto que se retira (días 2, 12 y 20), torbellino de 450 mantos
+  { const v0 = S.virgen - 1, vEnd = S.goya + 3, on = t > v0 && t < vEnd;
+    virgin.spot.intensity = on ? 7 * sm(v0, v0 + 2, t) : 0; virgin.glow.intensity = on ? 1.2 : 0;
+    virgin.rays.rotation.z = Math.sin(t * 0.4) * 0.03;
+    const pOff = at('virgen', 3, 'pero los') + 0.6, k = sm(pOff, pOff + 2.2, t) * (1 - sm(cue('virgen', 4).s + 1, cue('virgen', 4).s + 3, t));
+    virgin.manto.position.y = virgin.mantoY + k * 1.6; virgin.manto.material.opacity = 1 - k; virgin.manto.visible = k < 0.99;
+    const mOn = sm(at('virgen', 3, 'Cada'), at('virgen', 3, 'Tiene') + 0.5, t) * (1 - sm(pOff - 0.6, pOff + 0.8, t));
+    virgin.mm.visible = mOn > 0.01; virgin.mm.material.opacity = mOn;
+    if (virgin.mm.visible) { const D = new THREE.Object3D(), c = B(VN[0], VN[1], 0);
+      virgin.mp.forEach((q, i) => { const a = q.a + t * (0.25 + 0.6 / q.r); D.position.set(c.x + Math.cos(a) * q.r, q.y + Math.sin(t * .7 + i) * .2, c.z + Math.sin(a) * q.r); D.rotation.set(Math.sin(t + i) * .3, -a, 0); D.scale.setScalar(0.9 + q.s); D.updateMatrix(); virgin.mm.setMatrixAt(i, D.matrix); });
+      virgin.mm.instanceMatrix.needsUpdate = true; } }
+  // Ofrenda de Flores: la montaña crece en el desenlace
+  { const k = sm(cue('azuara', 1).s + 1, TOTAL - 3, t); flowers.geometry.setDrawRange(0, Math.floor(9000 * k)); }
 
   // sala del campanero
   stair.lamp.intensity = t > S.azuara - 1 && t < cue('azuara', 1).s ? 9 * sm(S.azuara, S.azuara + 2.5, t) : 0;
@@ -687,7 +836,7 @@ function loop() {
 // ------------------------------------------------------------------ ARRANQUE
 (async function init() {
   const btn = document.getElementById('start');
-  waterU = buildCity(); shaftM = buildCeiling(); stair = buildStair(); birds = buildBirds(140); people = buildPeople(220);
+  waterU = buildCity(); shaftM = buildCeiling(); stair = buildStair(); birds = buildBirds(140); people = buildPeople(220); buildVirgin(); buildFlowers();
   await loadModel();
   // bombas que caen: 3 + 1 dudosa (las fuentes no coinciden)
   const bf = groups.BombsFall; const src = bf.children[0];
