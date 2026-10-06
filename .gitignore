@@ -14,3 +14,8 @@ dbg*.py
 v2/*
 !v2/pilar.glb
 !v2/tex/
+venv_xtts/
+v3/*
+!v3/vo.mp3
+!v3/vo.json
+!v3/timeline.json

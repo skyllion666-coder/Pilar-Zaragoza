@@ -7,6 +7,8 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { Water } from 'three/examples/jsm/objects/Water.js';
+import { Lensflare, LensflareElement } from 'three/examples/jsm/objects/Lensflare.js';
 import { Audio } from './audio.js';
 
 const TL = window.__TL, S = TL.scenes, CUES = TL.cues, TOTAL = TL.total;
@@ -288,6 +290,14 @@ function buildCity() {
       vec3 c=mix(deep, sky*.8, .12+fr*.55)+r*.03+sky*pow(max(r,0.),6.)*.25; gl_FragColor=vec4(c,1.);} `
   }));
   water.rotation.x = -Math.PI / 2; water.position.copy(B(0, 125, 0.4)); scene.add(water);
+  // v3: Ebro con reflejo real (Water.js); el agua simple queda como reserva si el equipo va lento
+  const nc = document.createElement('canvas'); nc.width = nc.height = 256; const nx = nc.getContext('2d'); const id = nx.createImageData(256, 256);
+  const hgt = (x, y) => { let s = 0; for (let k = 1; k <= 6; k++) s += Math.sin((x * (k * 1.7) + y * (k * 0.9)) * Math.PI * 2 / 256 * k + k * 1.3) / k + Math.sin((y * (k * 1.3) - x * (k * 0.6)) * Math.PI * 2 / 256 * k + k) / k; return s; };
+  for (let y = 0; y < 256; y++) for (let x = 0; x < 256; x++) { const dx = hgt(x + 1, y) - hgt(x - 1, y), dy = hgt(x, y + 1) - hgt(x, y - 1); const n = new THREE.Vector3(-dx * 2.5, -dy * 2.5, 1).normalize(); const i = (y * 256 + x) * 4; id.data[i] = (n.x * .5 + .5) * 255; id.data[i + 1] = (n.y * .5 + .5) * 255; id.data[i + 2] = (n.z * .5 + .5) * 255; id.data[i + 3] = 255; }
+  nx.putImageData(id, 0, 0); const ntex = new THREE.CanvasTexture(nc); ntex.wrapS = ntex.wrapT = THREE.RepeatWrapping;
+  const wr = new Water(new THREE.PlaneGeometry(4000, 120), { textureWidth: 512, textureHeight: 512, waterNormals: ntex, sunDirection: new THREE.Vector3(1, .3, 0), sunColor: 0xffffff, waterColor: 0x0b2a2c, distortionScale: 2.2, fog: true });
+  wr.rotation.x = -Math.PI / 2; wr.position.copy(B(0, 125, 0.45)); wr.material.uniforms.size.value = 6; scene.add(wr);
+  water.visible = false; waterU.reflect = wr; waterU.simple = water;
   for (const yy of [65, 185]) { const bank = new THREE.Mesh(new THREE.BoxGeometry(4000, 3, 6), new THREE.MeshStandardMaterial({ color: 0x6e6252 })); bank.position.copy(B(0, yy, 1)); scene.add(bank); }
   // Puente de Piedra (esquemático, aguas abajo)
   const bridgeM = triplanar(new THREE.MeshStandardMaterial({ roughness: 0.9 }), 'sandstone_blocks_08', 0.3, 0xe0c8ae, 1.0);
@@ -377,6 +387,41 @@ function spawnWave(t, pos, strength, col = 0xffd8a0) {
   sphere.position.copy(pos); sphere.visible = false; scene.add(sphere);
   waves.push({ t, m, sphere, strength });
 }
+
+// ------------------------------------------------------------------ v3: PALOMAS (documentadas anidando en las torres) y GENTE EN LA PLAZA
+const birdU = { time: { value: 0 } };
+function buildBirds(n) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, -0.18, 0, 0, 0.16, -0.36, 0, 0.0, 0, 0, -0.18, 0.36, 0, 0.0, 0, 0, 0.16], 3));
+  g.computeVertexNormals();
+  const ph = new Float32Array(n); for (let i = 0; i < n; i++) ph[i] = Math.random() * 6.28;
+  g.setAttribute('phase', new THREE.InstancedBufferAttribute(ph, 1));
+  const mat = new THREE.MeshBasicMaterial({ color: 0x3a3c42, side: THREE.DoubleSide });
+  mat.onBeforeCompile = sh => { sh.uniforms.time = birdU.time;
+    sh.vertexShader = 'attribute float phase; uniform float time;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n transformed.y += sin(time*13.+phase)*0.28*abs(position.x)/0.36;'); };
+  const im = new THREE.InstancedMesh(g, mat, n); im.frustumCulled = false; scene.add(im);
+  const b = []; for (let i = 0; i < n; i++) { const tw = [[-64, -32.5], [64, -32.5], [-64, 32.5], [64, 32.5]][i % 4]; b.push({ c: B(tw[0], tw[1], 0), r: 6 + Math.random() * 14, h: 40 + Math.random() * 40, w: (0.35 + Math.random() * 0.4) * (Math.random() < .5 ? 1 : -1), a: Math.random() * 6.28, s: 1.6 + Math.random() * 0.8 }); }
+  return { im, b };
+}
+function buildPeople(n) {
+  const g = new THREE.CapsuleGeometry(0.24, 1.1, 2, 6); g.translate(0, 0.8, 0);
+  const im = new THREE.InstancedMesh(g, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 }), n); im.castShadow = true;
+  const cols = [0x2a2a30, 0x5a4636, 0x7a2f2f, 0x2f4a6a, 0xc9c0b0, 0x3d5a3d, 0x6a6a72];
+  const p = []; for (let i = 0; i < n; i++) { p.push({ x: -250 + Math.random() * 520, y: -40 - Math.random() * 54, v: (0.6 + Math.random() * 0.9) * (Math.random() < .5 ? 1 : -1), dy: (Math.random() - .5) * .3 }); im.setColorAt(i, new THREE.Color(cols[i % cols.length])); }
+  scene.add(im); return { im, p };
+}
+function flareTex(inner, outer, size = 128) {
+  const c = document.createElement('canvas'); c.width = c.height = size; const x = c.getContext('2d');
+  const gr = x.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2); gr.addColorStop(0, inner); gr.addColorStop(0.25, outer); gr.addColorStop(1, 'rgba(0,0,0,0)');
+  x.fillStyle = gr; x.fillRect(0, 0, size, size); return new THREE.CanvasTexture(c);
+}
+const flareCarrier = new THREE.PointLight(0xffffff, 0, 1); scene.add(flareCarrier);
+const lensflare = new Lensflare();
+lensflare.addElement(new LensflareElement(flareTex('rgba(255,250,235,1)', 'rgba(255,200,140,.35)', 256), 420, 0, new THREE.Color(0xffe6c0)));
+lensflare.addElement(new LensflareElement(flareTex('rgba(255,210,150,.5)', 'rgba(255,160,90,.08)'), 70, 0.45));
+lensflare.addElement(new LensflareElement(flareTex('rgba(160,200,255,.35)', 'rgba(120,160,255,.05)'), 110, 0.7));
+lensflare.addElement(new LensflareElement(flareTex('rgba(255,190,120,.4)', 'rgba(255,140,80,.05)'), 50, 0.95));
+flareCarrier.add(lensflare);
 
 // ------------------------------------------------------------------ SALA DEL CAMPANERO (escalera de la torre) — recreación
 function buildStair() {
@@ -474,12 +519,14 @@ function buildCards() {
   card(k(2), k(3), '<div class="cols"><div><span class="tag">TRADICIÓN</span><br>Milagro</div><div><span class="tag alt">INVESTIGACIÓN</span><br>Fallo de las espoletas<br>o sabotaje (VSCW)</div></div>', 'wide');
   card(k(3) + 0.2, S.azuara, '<div class="k">EXPUESTAS JUNTO A LA SANTA CAPILLA</div><div class="m">Hispana A-6 de 50 kg, según VSCW. Su autenticidad ha sido cuestionada.</div>');
   card(S.azuara + 0.5, cue('azuara', 1).s, 'Recreación. Inscripción documentada por Campaners de la Catedral de València; la letra original no se reproduce.', 'disclaim');
+  card(at('azuara', 0, 'José Azuara') + 1.5, cue('azuara', 1).s, '<div class="k">EL ÚLTIMO CAMPANERO</div><div class="m">El «tío» Simeón Millán tocó a mano las campanas del Pilar durante buena parte del siglo XX. Poco después de su muerte, hacia 1964, se electrificaron.</div>');
+  card(cue('azuara', 1).s + 0.5, S.outro + 0.5, '<div class="k">TRES VECES AL DÍA</div><div class="m">La megafonía de las torres difunde la jaculatoria:<br><i>«Bendita y alabada sea la hora en que María Santísima vino en carne mortal a Zaragoza»</i></div>');
   card(S.outro + 1, TOTAL - 1.0, '<div class="title">EL PILAR</div><div class="subtitle">Memoria de piedra y bronce</div><div class="m small" style="margin-top:2vh">Reconstrucción 3D basada en documentación disponible · Fuentes al final</div>', 'center');
   function c(i) { return cue('capilla', i).s; } function t(i) { return cue('sitios', i).s; } function k(i) { return cue('bombs', i).s; }
 }
 
 // ------------------------------------------------------------------ BUCLE PRINCIPAL
-let audio, t0 = null, waterU, shaftM, stair, playing = false;
+let audio, t0 = null, waterU, shaftM, stair, birds, people, playing = false;
 const camShake = new THREE.Vector3();
 function update(t) {
   // planos de cámara
@@ -596,6 +643,22 @@ function update(t) {
     a.needsUpdate = true;
   }
   waterU.time.value = t; waterU.sky.value.copy(skyU.bot.value); skyU.time.value = t;
+  if (waterU.reflect) { const W = waterU.reflect.material.uniforms; W.time.value = t * 0.5; W.sunDirection.value.copy(skyU.sunDir.value).normalize(); W.sunColor.value.copy(sun.color).multiplyScalar(Math.min(1, sun.intensity / 2.5)); W.waterColor.value.copy(scene.fog.color).multiplyScalar(0.18); }
+  // destello de lente (solo con sol visible)
+  const sunVis = skyU.stars.value < 0.5 && !inside && skyU.sunDir.value.y > 0.02;
+  lensflare.visible = sunVis; flareCarrier.position.copy(camera.position).addScaledVector(skyU.sunDir.value.clone().normalize(), 3000);
+  // velas en la Santa Capilla
+  interiorLights.children[0].intensity = 70 * (0.82 + 0.1 * Math.sin(t * 9.1) + 0.08 * Math.sin(t * 23.7 + 1.3));
+  // palomas: se agitan con cada golpe de campana
+  birdU.time.value = t; let agit = 0; for (const w of waves) { const d = t - w.t; if (d > 0 && d < 8) agit = Math.max(agit, Math.exp(-d * 0.45) * w.strength); }
+  { const D = new THREE.Object3D(); const night = t > S.bombs - 3 && t < S.azuara + 2; birds.im.visible = !night && !inside;
+    birds.b.forEach((q, i) => { q.a += q.w * (1 + agit * 2.5) * 0.016; const r = q.r * (1 + agit * 1.8), h = q.h + agit * 25 + Math.sin(t * .5 + i) * 3;
+      D.position.set(q.c.x + Math.cos(q.a) * r, h, q.c.z + Math.sin(q.a) * r); D.rotation.set(0, -q.a - (q.w > 0 ? 0 : Math.PI), Math.sin(t + i) * .2); D.scale.setScalar(q.s); D.updateMatrix(); birds.im.setMatrixAt(i, D.matrix); });
+    birds.im.instanceMatrix.needsUpdate = true; }
+  // gente en la plaza (de día y con el templo en pie)
+  { const D = new THREE.Object3D(); people.im.visible = !(t > S.bombs - 3 && t < S.azuara) && clipPlane.constant > 300 && !inside;
+    people.p.forEach((q, i) => { let x = q.x + q.v * t; x = ((x + 260) % 540 + 540) % 540 - 260; D.position.copy(B(x, q.y + Math.sin(t * .2 + i) * 2, 0)); D.scale.set(1, 1 + (i % 5) * .04, 1); D.updateMatrix(); people.im.setMatrixAt(i, D.matrix); });
+    people.im.instanceMatrix.needsUpdate = true; }
   for (const m of ghostMats) m.uniforms.time.value = t;
 
   // subtítulos y rótulos
@@ -611,7 +674,8 @@ function loop() {
   // calidad adaptativa: si el equipo no llega a ~35 fps, se desactiva la oclusión ambiental y se baja la resolución
   const now = performance.now(), dt = now - lastT; lastT = now; frames++;
   if (frames > 30 && dt > 28) slow++; else if (slow > 0) slow -= 0.25;
-  if (slow > 45 && gtao.enabled) { gtao.enabled = false; slow = 0; }
+  if (slow > 45 && waterU.reflect.visible) { waterU.reflect.visible = false; waterU.simple.visible = true; slow = 0; }
+  else if (slow > 45 && gtao.enabled) { gtao.enabled = false; slow = 0; }
   else if (slow > 45 && !gtao.enabled && renderer.getPixelRatio() > 1) { renderer.setPixelRatio(1); resize(); slow = 0; }
   const t = audio.time();
   update(t);
@@ -623,7 +687,7 @@ function loop() {
 // ------------------------------------------------------------------ ARRANQUE
 (async function init() {
   const btn = document.getElementById('start');
-  waterU = buildCity(); shaftM = buildCeiling(); stair = buildStair();
+  waterU = buildCity(); shaftM = buildCeiling(); stair = buildStair(); birds = buildBirds(140); people = buildPeople(220);
   await loadModel();
   // bombas que caen: 3 + 1 dudosa (las fuentes no coinciden)
   const bf = groups.BombsFall; const src = bf.children[0];
