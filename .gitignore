@@ -1,0 +1,13 @@
+venv/
+node_modules/
+tts/
+__pycache__/
+ref/
+research/
+build/*
+!build/pilar.glb
+!build/vo.mp3
+!build/timeline.json
+!build/vo.json
+!build/fresco.jpg
+dbg*.py
