@@ -39,15 +39,15 @@ gtao.updateGtaoMaterial({ radius: 2.5, distanceExponent: 1.5, thickness: 2, scal
 composer.addPass(gtao);
 const bloom = new UnrealBloomPass(new THREE.Vector2(512, 512), 0.35, 0.6, 0.86); composer.addPass(bloom);
 const grade = new ShaderPass({
-  uniforms: { tDiffuse: { value: null }, fade: { value: 0 }, time: { value: 0 }, warm: { value: 0 }, flash: { value: 0 }, sepia: { value: 0 } },
+  uniforms: { tDiffuse: { value: null }, fade: { value: 0 }, time: { value: 0 }, warm: { value: 0 }, flash: { value: 0 }, sepia: { value: 0 }, grain: { value: 0.035 } },
   vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }',
-  fragmentShader: `uniform sampler2D tDiffuse; uniform float fade,time,warm,flash,sepia; varying vec2 vUv;
+  fragmentShader: `uniform sampler2D tDiffuse; uniform float fade,time,warm,flash,sepia,grain; varying vec2 vUv;
   float h(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233))+time*7.)*43758.5453);}
   void main(){ vec4 c=texture2D(tDiffuse,vUv); vec3 col=c.rgb;
     col*= mix(vec3(1.),vec3(1.06,1.,.9),warm);
     float l=dot(col,vec3(.299,.587,.114)); col=mix(col, vec3(l)*vec3(1.1,.95,.75), sepia);
     vec2 q=vUv-.5; col*= 1.-dot(q,q)*1.1;
-    col+= (h(vUv)-.5)*.035; col+=flash; col*=1.-fade; gl_FragColor=vec4(col,c.a);} `
+    col+= (h(vUv)-.5)*grain; col+=flash; col*=1.-fade; gl_FragColor=vec4(col,c.a);} `
 });
 composer.addPass(grade); composer.addPass(new OutputPass());
 
@@ -854,8 +854,12 @@ function update(t) {
   const sb = SUBS.find(s => t >= s.s - 0.05 && t < s.e + 0.45);
   const txt = sb ? sb.text : '';
   if (subEl.dataset.t !== txt) { subEl.dataset.t = txt; subEl.textContent = txt; subEl.classList.toggle('on', !!txt); }
-  for (const c of CARDS) c.el.classList.toggle('on', t >= c.t0 && t < c.t1);
+  if (VIDEO) {
+    for (const c of CARDS) { const o = sm(c.t0, c.t0 + 0.7, t) * (1 - sm(c.t1 - 0.5, c.t1, t)); c.el.style.opacity = o; c.el.style.transform = c.el.classList.contains('center') ? `translate(-50%,-50%)` : `translateY(${(1 - o) * 12}px)`; }
+    subEl.style.opacity = sb ? sm(sb.s - 0.05, sb.s + 0.2, t) * (1 - sm(sb.e + 0.25, sb.e + 0.45, t)) : 0;
+  } else for (const c of CARDS) c.el.classList.toggle('on', t >= c.t0 && t < c.t1);
 }
+let VIDEO = false;
 
 const quality = { gtao: true, reflect: true };
 let frames = 0, slow = 0, lastT = performance.now();
@@ -887,6 +891,20 @@ function loop() {
   setEnv('dawn', 'dawn', 0); update(S.ebro + 6); composer.render();
   btn.disabled = false; btn.textContent = 'INICIAR DOCUMENTAL';
   window.__render = t => { update(t); composer.render(); };
+  // EXPORTACIÓN A VÍDEO: prepara el modo determinista y devuelve la mezcla de audio renderizada offline
+  window.__videoPrep = () => {
+    VIDEO = true; grade.uniforms.grain.value = 0; document.body.classList.add('video', 'playing'); document.getElementById('intro').style.display = 'none';
+    const a = new Audio(null, TL, { S, cue, at }); a.compose();
+    for (const tt of a.waveTimes) spawnWave(tt.t, tt.pos === 'SW' ? B(-64, -32.5, 0) : B(64, -32.5, 0), tt.s, tt.pos === 'SW' ? 0xffd8a0 : 0xffb070);
+    return TOTAL;
+  };
+  window.__videoAudio = async () => {
+    const a = new Audio(b64(window.__VO).buffer, TL, { S, cue, at }); const buf = await a.start(true);
+    const L = buf.getChannelData(0), R = buf.getChannelData(1), n = L.length, pcm = new Int16Array(n * 2);
+    for (let i = 0; i < n; i++) { pcm[2 * i] = Math.max(-1, Math.min(1, L[i])) * 32767; pcm[2 * i + 1] = Math.max(-1, Math.min(1, R[i])) * 32767; }
+    window.__pcm = new Uint8Array(pcm.buffer); return { n, sr: buf.sampleRate };
+  };
+  window.__pcmChunk = (i, size) => { const s = window.__pcm.subarray(i * size, (i + 1) * size); let b = ''; for (let k = 0; k < s.length; k += 8192) b += String.fromCharCode.apply(null, s.subarray(k, k + 8192)); return btoa(b); };
   window.__dbg = { groups, named, clipPlane, THREE };
   btn.onclick = async () => {
     document.getElementById('intro').classList.add('off'); document.body.classList.add('playing');

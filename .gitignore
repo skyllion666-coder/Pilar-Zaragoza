@@ -36,3 +36,4 @@ v5/*
 !v5/ref/
 v5/ref/*.jpg
 !v5/ref/credits.json
+*.mp4

@@ -11,9 +11,11 @@ export class Audio {
     this.voBuf = voBuf; this.TL = TL; this.h = h; this.ev = []; this.waveTimes = [];
   }
   time() { return this.ctx ? Math.max(0, this.ctx.currentTime - this.T0) : 0; }
-  async start() {
-    const ctx = this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-    await ctx.resume();
+  async start(offline = false) {
+    // offline = true: mezcla completa sin tiempo real (para exportar el vídeo); misma partitura y misma mezcla
+    const SR = 48000;
+    const ctx = this.ctx = offline ? new OfflineAudioContext(2, Math.ceil((this.TL.total + 1) * SR), SR) : new (window.AudioContext || window.webkitAudioContext)();
+    if (!offline) await ctx.resume();
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 3; comp.connect(ctx.destination);
     this.master = ctx.createGain(); this.master.gain.value = 0.9; this.master.connect(comp);
     // reverberación sintética (nave de piedra)
@@ -27,7 +29,7 @@ export class Audio {
     const bs = ctx.createGain(); bs.gain.value = 0.9; this.bells.connect(bs); bs.connect(this.rev);
     this.noise = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate); const nd = this.noise.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
     const vo = await ctx.decodeAudioData(this.voBuf.slice(0));
-    this.T0 = ctx.currentTime + 0.25;
+    this.T0 = offline ? 0 : ctx.currentTime + 0.25;
     const src = ctx.createBufferSource(); src.buffer = vo; const vg = ctx.createGain(); vg.gain.value = 1.15; src.connect(vg); vg.connect(this.master);
     const vs = ctx.createGain(); vs.gain.value = 0.08; vg.connect(vs); vs.connect(this.rev);
     src.start(this.T0);
@@ -37,6 +39,7 @@ export class Audio {
     const g = this.music.gain; g.setValueAtTime(0.5, this.T0);
     for (const c of this.TL.cues) { g.setTargetAtTime(0.26, this.T0 + c.s - 0.3, 0.25); g.setTargetAtTime(0.5, this.T0 + c.e + 0.2, 0.6); }
     this.ev.sort((a, b) => a.t - b.t); this.ei = 0;
+    if (offline) { for (const e of this.ev) { try { e.fn(this.T0 + e.t); } catch (err) { console.warn(err); } } return ctx.startRendering(); }
     this.timer = setInterval(() => this.pump(), 40); this.pump();
   }
   at(t, fn) { this.ev.push({ t, fn }); }
